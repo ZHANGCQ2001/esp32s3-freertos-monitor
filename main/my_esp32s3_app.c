@@ -7,6 +7,7 @@
 #include "freertos/task.h"
 #include "esp_timer.h"
 #include "driver/uart.h"
+#include <string.h>
 
 typedef enum {
     STATE_IDLE = 0,
@@ -24,7 +25,7 @@ static const gpio_num_t BOARD_UART_TX_GPIO = GPIO_NUM_43;
 static const gpio_num_t BOARD_UART_RX_GPIO = GPIO_NUM_44;
 static const uint32_t BOARD_LED_ON_LEVEL = 0;
 static const uint32_t BOARD_LED_OFF_LEVEL = 1;
-// static const uint32_t DEBOUNCE_TIME = 20;
+static const uint32_t DEBOUNCE_TIME = 20;
 
 
 static esp_err_t board_gpio_init(void)
@@ -93,57 +94,58 @@ void app_main(void)
     ButtonState buttonstate = STATE_IDLE;
     while(1) {
 
-        // int btn_state = board_btn_get();
-        // switch(buttonstate) {
-        //     case(STATE_IDLE):
-        //         if(btn_state == 0) {
-        //             // 检测到按键开关关闭，转入按下消抖模式，并记录下当前时间
-        //             current_time = esp_timer_get_time() / 1000;
-        //             buttonstate = STATE_PRESS_DEBOUNCE;
-        //         }
-        //         break;
-        //     case(STATE_PRESS_DEBOUNCE):
-        //         if(btn_state == 1) {
-        //             // 如果在检测时间内，按键回到打开状态，则返回最初状态
-        //                 buttonstate = STATE_IDLE;
-        //         } else if((esp_timer_get_time() / 1000 - current_time) >= DEBOUNCE_TIME) {
-        //             // 如果经过一段时间以后，按键开关依然保持关闭，那么跳转到按键关闭状态
-        //             buttonstate = STATE_PRESSED;
-        //         }
-        //         break;
-        //     case(STATE_PRESSED):
-        //         if(btn_state == 1) {
-        //             // 检测到按键开关打开，转入打开消抖模式，并记录下当前时间
-        //             current_time = esp_timer_get_time() / 1000;
-        //             buttonstate = STATE_RELEASE_DEBOUNCE;
-        //         }
-        //         break;
-        //     case(STATE_RELEASE_DEBOUNCE):
-        //         if(btn_state == 0) {
-        //             // 如果在检测时间内，按键回到关闭状态，则说明还没松手
-        //             buttonstate = STATE_PRESSED;
-        //         } else if((esp_timer_get_time() / 1000 - current_time) >= DEBOUNCE_TIME) {
-        //             // 如果经过一段时间以后，按键开关依然保持打开，那么已经完成了一次按键按下+松手的过程
-        //             // 跳转到最初状态，此时LED灯状态翻转
-        //             buttonstate = STATE_IDLE;
-        //             if(LED_STATE) LED_STATE = 0;
-        //             else LED_STATE = 1;
-        //             board_led_set(LED_STATE);
-        //         }
-        //         break;
-        //     default:
-        //         break;
-        // }
+        int btn_state = board_btn_get();
+        switch(buttonstate) {
+            case(STATE_IDLE):
+                if(btn_state == 0) {
+                    // 检测到按键开关关闭，转入按下消抖模式，并记录下当前时间
+                    current_time = esp_timer_get_time() / 1000;
+                    buttonstate = STATE_PRESS_DEBOUNCE;
+                }
+                break;
+            case(STATE_PRESS_DEBOUNCE):
+                if(btn_state == 1) {
+                    // 如果在检测时间内，按键回到打开状态，则返回最初状态
+                        buttonstate = STATE_IDLE;
+                } else if((esp_timer_get_time() / 1000 - current_time) >= DEBOUNCE_TIME) {
+                    // 如果经过一段时间以后，按键开关依然保持关闭，那么跳转到按键关闭状态
+                    buttonstate = STATE_PRESSED;
+                }
+                break;
+            case(STATE_PRESSED):
+                if(btn_state == 1) {
+                    // 检测到按键开关打开，转入打开消抖模式，并记录下当前时间
+                    current_time = esp_timer_get_time() / 1000;
+                    buttonstate = STATE_RELEASE_DEBOUNCE;
+                }
+                break;
+            case(STATE_RELEASE_DEBOUNCE):
+                if(btn_state == 0) {
+                    // 如果在检测时间内，按键回到关闭状态，则说明还没松手
+                    buttonstate = STATE_PRESSED;
+                } else if((esp_timer_get_time() / 1000 - current_time) >= DEBOUNCE_TIME) {
+                    // 如果经过一段时间以后，按键开关依然保持打开，那么已经完成了一次按键按下+松手的过程
+                    // 跳转到最初状态，此时LED灯状态翻转
+                    buttonstate = STATE_IDLE;
+                    LED_STATE = !LED_STATE;
+                    
+                    ESP_ERROR_CHECK(board_led_set(LED_STATE));
+                    const char *message = LED_STATE ? "LED ON\r\n" : "LED OFF\r\n";
+                    size_t message_len = strlen(message);
 
-        // vTaskDelay(pdMS_TO_TICKS(10));
+                    int written = uart_write_bytes(uart_num, message, message_len);
 
-        static const char message[]  =  "Hello  UART\r\n";
-        int written =  uart_write_bytes(uart_num,  message, sizeof(message)  - 1);
-        if(written < 0) {
-            ESP_LOGE(TAG, "Failed to send UART data");
-        } else if(written !=  sizeof(message)  - 1) {
-            ESP_LOGW(TAG, "Only sent %d bytes", written);
+                    if (written < 0) {
+                        ESP_LOGE(TAG, "Failed to send UART data");
+                    } else if ((size_t)written != message_len) {
+                        ESP_LOGW(TAG, "Only sent %d bytes", written);
+                    }
+                }
+                break;
+            default:
+                break;
         }
-        vTaskDelay(pdMS_TO_TICKS(1000));
+
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
