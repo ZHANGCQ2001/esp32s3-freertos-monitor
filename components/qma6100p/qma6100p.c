@@ -187,6 +187,7 @@ static esp_err_t qma6100p_check_chip_status(void)
 
         return ESP_ERR_INVALID_RESPONSE;
     }
+    ESP_LOGI(TAG, "Chip status valid, status=0x%02X", status);
 
     return ESP_OK;
 }
@@ -211,7 +212,7 @@ static esp_err_t qma6100p_wait_otp_ready(void)
 
         if ((status & QMA6100P_OTP_READY_MASK)
             == QMA6100P_OTP_READY_MASK) {
-
+            ESP_LOGI(TAG, "OTP ready, status=0x%02X", status);
             return ESP_OK;
         }
 
@@ -260,7 +261,13 @@ static esp_err_t qma6100p_soft_reset(void)
         return ret;
     }
 
-    return qma6100p_wait_otp_ready();
+    ret = qma6100p_wait_otp_ready();
+
+    if (ret != ESP_OK) {
+        return ret;
+    }
+
+    return qma6100p_check_chip_status();
 }
 
 
