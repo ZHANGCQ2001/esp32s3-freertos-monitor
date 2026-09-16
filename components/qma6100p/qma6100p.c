@@ -33,18 +33,24 @@
 
 
 /* ==================== QMA6100P 内部定义 ==================== */
-
-/*
- * RESET 寄存器和命令值来自 QMA6100P 芯片协议。
- *
- * 正点原子参考驱动中也定义：
- * RESET register = 0x36
- * RESET command  = 0xB6
- * RESET end      = 0x00
- */
+/* I2C 从机地址：QMA6100P 芯片/板卡配置决定 */
+#define QMA6100P_I2C_ADDRESS     0x12
+/* CHIP_ID 寄存器地址：QMA6100P Datasheet 决定 */
+#define QMA6100P_CHIP_ID_REG     0x00
+/* 软件复位相关：QMA6100P Datasheet 决定 */
 #define QMA6100P_RESET_REG       0x36
 #define QMA6100P_RESET_CMD       0xB6
 #define QMA6100P_RESET_END       0x00
+
+#define QMA6100P_OTP_STATUS_REG       0x33
+#define QMA6100P_OTP_READY_MASK       ((1U << 0) | (1U << 2))
+
+#define QMA6100P_CHIP_STATUS_REG      0x45
+#define QMA6100P_CHIP_STATUS_MASK     0xF0
+#define QMA6100P_CHIP_STATUS_EXPECTED 0xC0
+
+#define QMA6100P_STATUS_POLL_US        1000
+#define QMA6100P_STATUS_MAX_RETRIES    100
 
 
 /* ==================== 模块内部状态 ==================== */
@@ -60,6 +66,22 @@ static const char *TAG = "qma6100p";
 
 static i2c_master_bus_handle_t s_bus_handle = NULL;
 static i2c_master_dev_handle_t s_dev_handle = NULL;
+
+
+static esp_err_t qma6100p_read_regs(
+    uint8_t start_reg,
+    uint8_t *data,
+    size_t len);
+
+static esp_err_t qma6100p_write_reg(
+    uint8_t reg,
+    uint8_t value);
+
+static esp_err_t qma6100p_wait_otp_ready(void);
+
+static esp_err_t qma6100p_check_chip_status(void);
+
+static esp_err_t qma6100p_soft_reset(void);
 
 
 /* ==================== 内部辅助函数 ==================== */
@@ -140,6 +162,70 @@ static esp_err_t qma6100p_write_reg(
     );
 }
 
+static esp_err_t qma6100p_check_chip_status(void)
+{
+    uint8_t status = 0;
+
+    esp_err_t ret = qma6100p_read_regs(
+        QMA6100P_CHIP_STATUS_REG,
+        &status,
+        1
+    );
+
+    if (ret != ESP_OK) {
+        return ret;
+    }
+
+    if ((status & QMA6100P_CHIP_STATUS_MASK)
+        != QMA6100P_CHIP_STATUS_EXPECTED) {
+
+        ESP_LOGE(
+            TAG,
+            "Invalid chip status: 0x%02X",
+            status
+        );
+
+        return ESP_ERR_INVALID_RESPONSE;
+    }
+
+    return ESP_OK;
+}
+
+static esp_err_t qma6100p_wait_otp_ready(void)
+{
+    uint8_t status = 0;
+
+    for (int retry = 0;
+         retry < QMA6100P_STATUS_MAX_RETRIES;
+         retry++) {
+
+        esp_err_t ret = qma6100p_read_regs(
+            QMA6100P_OTP_STATUS_REG,
+            &status,
+            1
+        );
+
+        if (ret != ESP_OK) {
+            return ret;
+        }
+
+        if ((status & QMA6100P_OTP_READY_MASK)
+            == QMA6100P_OTP_READY_MASK) {
+
+            return ESP_OK;
+        }
+
+        esp_rom_delay_us(QMA6100P_STATUS_POLL_US);
+    }
+
+    ESP_LOGE(
+        TAG,
+        "OTP ready timeout, status=0x%02X",
+        status
+    );
+
+    return ESP_ERR_TIMEOUT;
+}
 
 /*
  * QMA6100P 软件复位。
@@ -162,13 +248,6 @@ static esp_err_t qma6100p_soft_reset(void)
 
     /*
      * Datasheet 要求软件复位命令之后等待约 1 ms。
-     *
-     * 当前 FreeRTOS：
-     * CONFIG_FREERTOS_HZ = 100
-     * 1 tick = 10 ms
-     *
-     * 因此这里不用 vTaskDelay(1)，
-     * 而使用微秒级延时。
      */
     esp_rom_delay_us(1000);
 
@@ -181,13 +260,11 @@ static esp_err_t qma6100p_soft_reset(void)
         return ret;
     }
 
-    return ESP_OK;
+    return qma6100p_wait_otp_ready();
 }
 
 
-/* ==================== 对外公开 API ==================== */
-
-
+/* ==================== 对外 API ==================== */
 /*
  * 对外公开：
  * main.c 需要调用它。
@@ -246,6 +323,14 @@ esp_err_t qma6100p_init(void)
         QMA6100P_I2C_SCL,
         QMA6100P_I2C_ADDRESS
     );
+
+    ESP_RETURN_ON_ERROR(
+        qma6100p_soft_reset(),
+        TAG,
+        "QMA6100P software reset failed"
+    );
+
+    ESP_LOGI(TAG, "QMA6100P software reset complete");
 
     return ESP_OK;
 }
