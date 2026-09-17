@@ -75,6 +75,9 @@
 #define QMA6100P_ODR_100HZ           0x00
 #define QMA6100P_NLPF_OFF            0x00
 
+#define QMA6100P_XOUTL_REG       0x01
+#define QMA6100P_ACCEL_DATA_LEN  6
+
 /* ==================== 模块内部状态 ==================== */
 
 /*
@@ -110,6 +113,8 @@ static esp_err_t qma6100p_post_reset_init(void);
 static esp_err_t qma6100p_set_range(void);
 
 static esp_err_t qma6100p_set_odr(void);
+
+static int16_t qma6100p_decode_axis(uint8_t lsb, uint8_t msb);
 
 
 /* ==================== 内部辅助函数 ==================== */
@@ -426,10 +431,19 @@ static esp_err_t qma6100p_set_odr(void)
     return ESP_OK;
 }
 
+static int16_t qma6100p_decode_axis(uint8_t lsb, uint8_t msb)
+{
+    int16_t value = (int16_t)(
+        ((uint16_t)msb << 8) |
+        ((uint16_t)lsb & 0xFC)
+    );
+
+    return value >> 2;
+}
+
 
 /* ==================== 对外 API ==================== */
 /*
- * 对外公开：
  * main.c 需要调用它。
  *
  * 当前阶段它负责：
@@ -516,9 +530,7 @@ esp_err_t qma6100p_init(void)
     return ESP_OK;
 }
 
-
 /*
- * 对外公开：
  * main.c 目前需要它来做 bring-up 验证。
  *
  * 但它内部不再直接操作 ESP-IDF I2C API，
@@ -535,4 +547,29 @@ esp_err_t qma6100p_read_chip_id(uint8_t *chip_id)
         chip_id,
         1
     );
+}
+
+/*
+ * main.c 目前需要它来读取寄存器中的XYZ值。
+ *
+ */
+esp_err_t qma6100p_read_raw(qma6100p_raw_accel_t *raw)
+{
+    if(raw == NULL) return ESP_ERR_INVALID_ARG;
+
+    esp_err_t ret;
+    int8_t data[QMA6100P_ACCEL_DATA_LEN];
+
+    ret = qma6100p_read_regs(
+        QMA6100P_XOUTL_REG, 
+        data, 
+        sizeof(data)
+    );
+    if(ret != ESP_OK) return ret;
+
+    raw->x = qma6100p_decode_axis(data[0], data[1]);
+    raw->y = qma6100p_decode_axis(data[2], data[3]);
+    raw->z = qma6100p_decode_axis(data[4], data[5]);
+    
+    return ESP_OK;
 }

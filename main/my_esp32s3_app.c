@@ -112,6 +112,23 @@ void app_main(void)
                 "Failed to read QMA6100P CHIP_ID: %s",
                 esp_err_to_name(qma_ret));
     }
+    qma6100p_raw_accel_t raw;
+    esp_err_t ret = qma6100p_read_raw(&raw);
+    if (ret == ESP_OK) {
+        ESP_LOGI(
+            TAG,
+            "QMA raw: X=%d Y=%d Z=%d",
+            raw.x,
+            raw.y,
+            raw.z
+        );
+    } else {
+        ESP_LOGE(
+            TAG,
+            "Failed to read QMA6100P raw data: %s",
+            esp_err_to_name(ret)
+        );
+    }
     
     ButtonState buttonstate = STATE_IDLE;
     while(1) {
