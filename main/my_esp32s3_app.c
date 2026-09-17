@@ -96,60 +96,7 @@ void app_main(void)
     ESP_ERROR_CHECK(board_uart_init(uart_num, 115200));
     ESP_ERROR_CHECK(qma6100p_init());
 
-    uint8_t chip_id = 0;
-    esp_err_t qma_ret = qma6100p_read_chip_id(&chip_id);
-
-    if (qma_ret == ESP_OK) {
-        if (chip_id == QMA6100P_CHIP_ID_EXPECTED) {
-            ESP_LOGI(TAG,
-                    "QMA6100P detected, CHIP_ID=0x%02X",
-                    chip_id);
-        } else {
-            ESP_LOGW(TAG,
-                    "Unexpected QMA6100P CHIP_ID=0x%02X, expected 0x%02X",
-                    chip_id,
-                    QMA6100P_CHIP_ID_EXPECTED);
-        }
-    } else {
-        ESP_LOGE(TAG,
-                "Failed to read QMA6100P CHIP_ID: %s",
-                esp_err_to_name(qma_ret));
-    }
-
-    const TickType_t sample_period = pdMS_TO_TICKS(50);
-    TickType_t last_wake_time = xTaskGetTickCount();
-
-    for(int i = 0; i < 40; i++)
-    {
-        qma6100p_accel_g_t accel;
-        esp_err_t ret = qma6100p_read_accel_g(&accel);
-        if (ret == ESP_OK) {
-            float accel_norm = sqrtf(
-                accel.x_g * accel.x_g +
-                accel.y_g * accel.y_g +
-                accel.z_g * accel.z_g
-            );
-            ESP_LOGI(
-                TAG,
-                "QMA accel: X=%.3f g Y=%.3f g Z=%.3f g |a|=%.3f g",
-                accel.x_g,
-                accel.y_g,
-                accel.z_g,
-                accel_norm
-            );
-        } else {
-            ESP_LOGE(
-                TAG,
-                "Failed to read QMA6100P acceleration: %s",
-                esp_err_to_name(ret)
-            );
-        }
-
-        vTaskDelayUntil(
-            &last_wake_time,
-            sample_period
-        );
-    }
+    ESP_ERROR_CHECK(sensor_task_start());
 
     
     ButtonState buttonstate = STATE_IDLE;
