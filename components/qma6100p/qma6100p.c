@@ -49,9 +49,27 @@
 #define QMA6100P_CHIP_STATUS_MASK     0xF0
 #define QMA6100P_CHIP_STATUS_EXPECTED 0xC0
 
+#define QMA6100P_POWER_MANAGE_REG      0x11
+#define QMA6100P_WAKE_MODE             0x80
+#define QMA6100P_ACTIVE_MCLK_51K2      0x84
+
+#define QMA6100P_TST0_ANA_REG          0x4A
+#define QMA6100P_TST0_ANA_INIT         0x20
+
+#define QMA6100P_AFE_ANA_REG           0x56
+#define QMA6100P_AFE_ANA_INIT          0x01
+
+#define QMA6100P_TST1_ANA_REG          0x5F
+#define QMA6100P_TST1_ANA_START        0x80
+#define QMA6100P_TST1_ANA_END          0x00
+
+#define QMA6100P_ANA_DELAY_US           1000
+
 #define QMA6100P_STATUS_POLL_US        1000
 #define QMA6100P_STATUS_MAX_RETRIES    100
 
+#define QMA6100P_RANGE_REG       0x0F
+#define QMA6100P_RANGE_8G        0x04
 
 /* ==================== 模块内部状态 ==================== */
 
@@ -82,6 +100,8 @@ static esp_err_t qma6100p_wait_otp_ready(void);
 static esp_err_t qma6100p_check_chip_status(void);
 
 static esp_err_t qma6100p_soft_reset(void);
+
+static esp_err_t qma6100p_post_reset_init(void);
 
 
 /* ==================== 内部辅助函数 ==================== */
@@ -270,6 +290,56 @@ static esp_err_t qma6100p_soft_reset(void)
     return qma6100p_check_chip_status();
 }
 
+/*
+ * QMA6100P 软件复位后的预先置位。
+ *
+ * 当前实现 RESET 后的寄存器状态置位。
+ */
+static esp_err_t qma6100p_post_reset_init(void)
+{
+    esp_err_t ret;
+
+    ret = qma6100p_write_reg(
+        QMA6100P_POWER_MANAGE_REG, 
+        QMA6100P_WAKE_MODE
+    );
+    if(ret != ESP_OK) return ret;
+
+    ret = qma6100p_write_reg(
+        QMA6100P_POWER_MANAGE_REG, 
+        QMA6100P_ACTIVE_MCLK_51K2
+    );
+    if(ret != ESP_OK) return ret;
+
+    ret = qma6100p_write_reg(
+        QMA6100P_TST0_ANA_REG, 
+        QMA6100P_TST0_ANA_INIT
+    );
+    if(ret != ESP_OK) return ret;
+
+    ret = qma6100p_write_reg(
+        QMA6100P_AFE_ANA_REG, 
+        QMA6100P_AFE_ANA_INIT
+    );
+    if(ret != ESP_OK) return ret;
+
+    ret = qma6100p_write_reg(
+        QMA6100P_TST1_ANA_REG, 
+        QMA6100P_TST1_ANA_START
+    );
+    if(ret != ESP_OK) return ret;
+
+    esp_rom_delay_us(1000);
+
+    ret = qma6100p_write_reg(
+        QMA6100P_TST1_ANA_REG, 
+        QMA6100P_TST1_ANA_END
+    );
+    if(ret != ESP_OK) return ret;
+
+    return ret;
+}
+
 
 /* ==================== 对外 API ==================== */
 /*
@@ -335,6 +405,12 @@ esp_err_t qma6100p_init(void)
         qma6100p_soft_reset(),
         TAG,
         "QMA6100P software reset failed"
+    );
+
+    ESP_RETURN_ON_ERROR(
+        qma6100p_post_reset_init(),
+        TAG,
+        "QMA6100P software post_reset_init failed"
     );
 
     ESP_LOGI(TAG, "QMA6100P software reset complete");
