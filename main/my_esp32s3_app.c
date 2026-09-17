@@ -7,10 +7,10 @@
 #include "esp_timer.h"
 #include "driver/uart.h"
 #include "qma6100p.h"
+#include "sensor_task.h"
 
 /*标准库*/
 #include <string.h>
-#include <math.h>
 #include <stdbool.h>
 
 typedef enum {
