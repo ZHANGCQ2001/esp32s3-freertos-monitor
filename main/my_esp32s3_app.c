@@ -112,6 +112,7 @@ void app_main(void)
                 "Failed to read QMA6100P CHIP_ID: %s",
                 esp_err_to_name(qma_ret));
     }
+    vTaskDelay(pdMS_TO_TICKS(100));
     qma6100p_raw_accel_t raw;
     esp_err_t ret = qma6100p_read_raw(&raw);
     if (ret == ESP_OK) {
