@@ -103,6 +103,8 @@ static esp_err_t qma6100p_soft_reset(void);
 
 static esp_err_t qma6100p_post_reset_init(void);
 
+static esp_err_t qma6100p_set_range_8g(void);
+
 
 /* ==================== 内部辅助函数 ==================== */
 
@@ -270,7 +272,7 @@ static esp_err_t qma6100p_soft_reset(void)
     /*
      * Datasheet 要求软件复位命令之后等待约 1 ms。
      */
-    esp_rom_delay_us(1000);
+    esp_rom_delay_us(QMA6100P_STATUS_POLL_US);
 
     ret = qma6100p_write_reg(
         QMA6100P_RESET_REG,
@@ -329,13 +331,44 @@ static esp_err_t qma6100p_post_reset_init(void)
     );
     if(ret != ESP_OK) return ret;
 
-    esp_rom_delay_us(1000);
+    esp_rom_delay_us(QMA6100P_ANA_DELAY_US);
 
     ret = qma6100p_write_reg(
         QMA6100P_TST1_ANA_REG, 
         QMA6100P_TST1_ANA_END
     );
     if(ret != ESP_OK) return ret;
+
+    return ret;
+}
+
+static esp_err_t qma6100p_set_range_8g(void)
+{
+    esp_err_t ret;
+
+    ret = qma6100p_write_reg(
+        QMA6100P_RANGE_REG, 
+        QMA6100P_RANGE_8G
+    );
+    if(ret != ESP_OK) return ret;
+
+    uint8_t range_reg = 0;
+    ret = qma6100p_read_regs(
+        QMA6100P_RANGE_REG, 
+        &range_reg, 
+        1
+    );
+    if(ret != ESP_OK) return ret;
+
+    if(range_reg & 0x0F != QMA6100P_RANGE_8G)
+    {
+        ESP_LOGE(
+            TAG,
+            "Range verify failed, reg=0x%02X",
+            range_reg
+        );
+        return ESP_ERR_INVALID_RESPONSE;
+    }
 
     return ret;
 }
@@ -413,6 +446,12 @@ esp_err_t qma6100p_init(void)
         "QMA6100P software post_reset_init failed"
     );
 
+    ESP_RETURN_ON_ERROR(
+        qma6100p_set_range_8g(),
+        TAG,
+        "QMA6100P set range 8g failed"
+    );
+    
     ESP_LOGI(TAG, "QMA6100P software reset complete");
 
     return ESP_OK;
