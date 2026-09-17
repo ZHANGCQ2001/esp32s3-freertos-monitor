@@ -71,6 +71,10 @@
 #define QMA6100P_RANGE_REG       0x0F
 #define QMA6100P_RANGE_8G        0x04
 
+#define QMA6100P_BW_ODR_REG          0x10
+#define QMA6100P_ODR_100HZ           0x00
+#define QMA6100P_NLPF_OFF            0x00
+
 /* ==================== 模块内部状态 ==================== */
 
 /*
@@ -103,7 +107,9 @@ static esp_err_t qma6100p_soft_reset(void);
 
 static esp_err_t qma6100p_post_reset_init(void);
 
-static esp_err_t qma6100p_set_range_8g(void);
+static esp_err_t qma6100p_set_range(void);
+
+static esp_err_t qma6100p_set_odr(void);
 
 
 /* ==================== 内部辅助函数 ==================== */
@@ -339,10 +345,11 @@ static esp_err_t qma6100p_post_reset_init(void)
     );
     if(ret != ESP_OK) return ret;
 
-    return ret;
+    return ESP_OK;
 }
 
-static esp_err_t qma6100p_set_range_8g(void)
+/* range = 8g */
+static esp_err_t qma6100p_set_range(void)
 {
     esp_err_t ret;
 
@@ -370,7 +377,53 @@ static esp_err_t qma6100p_set_range_8g(void)
         return ESP_ERR_INVALID_RESPONSE;
     }
 
-    return ret;
+    ESP_LOGI(
+        TAG,
+        "Range configured: +/-8g, reg=0x%02X",
+        range_reg
+    );
+
+    return ESP_OK;
+}
+
+/* odr = 100hz */
+static esp_err_t qma6100p_set_odr(void)
+{
+    esp_err_t ret;
+    const uint8_t config =
+        QMA6100P_ODR_100HZ |
+        QMA6100P_NLPF_OFF;
+
+    ret = qma6100p_write_reg(
+        QMA6100P_BW_ODR_REG, 
+        config
+    );
+    if(ret != ESP_OK) return ret;
+
+    uint8_t reg_value = 0;
+    ret = qma6100p_read_regs(
+        QMA6100P_BW_ODR_REG, 
+        &reg_value, 
+        1
+    );
+    if(ret != ESP_OK) return ret;
+    if((reg_value & 0xFF) != config)
+    {
+        ESP_LOGE(
+            TAG,
+            "odr verify failed, reg=0x%02X",
+            reg_value
+        );
+        return ESP_ERR_INVALID_RESPONSE;
+    }
+
+    ESP_LOGI(
+        TAG,
+        "ODR configured: 100 Hz, filter off, reg=0x%02X",
+        reg_value
+    );
+
+    return ESP_OK;
 }
 
 
@@ -447,12 +500,18 @@ esp_err_t qma6100p_init(void)
     );
 
     ESP_RETURN_ON_ERROR(
-        qma6100p_set_range_8g(),
+        qma6100p_set_range(),
         TAG,
-        "QMA6100P set range 8g failed"
+        "QMA6100P set range failed"
     );
-    
-    ESP_LOGI(TAG, "QMA6100P software reset complete");
+
+    ESP_RETURN_ON_ERROR(
+        qma6100p_set_odr(),
+        TAG,
+        "QMA6100P set odr failed"
+    );
+
+    ESP_LOGI(TAG, "QMA6100P basic initialization complete");
 
     return ESP_OK;
 }
