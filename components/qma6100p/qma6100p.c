@@ -360,7 +360,7 @@ static esp_err_t qma6100p_set_range_8g(void)
     );
     if(ret != ESP_OK) return ret;
 
-    if(range_reg & 0x0F != QMA6100P_RANGE_8G)
+    if((range_reg & 0x0F) != QMA6100P_RANGE_8G)
     {
         ESP_LOGE(
             TAG,
