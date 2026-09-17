@@ -1,5 +1,4 @@
-#include <stdbool.h>
-
+/*私有库*/
 #include "driver/gpio.h"
 #include "esp_check.h"
 #include "esp_log.h"
@@ -8,7 +7,11 @@
 #include "esp_timer.h"
 #include "driver/uart.h"
 #include "qma6100p.h"
+
+/*标准库*/
 #include <string.h>
+#include <math.h>
+#include <stdbool.h>
 
 typedef enum {
     STATE_IDLE = 0,
@@ -112,26 +115,42 @@ void app_main(void)
                 "Failed to read QMA6100P CHIP_ID: %s",
                 esp_err_to_name(qma_ret));
     }
-    vTaskDelay(pdMS_TO_TICKS(100));
-    qma6100p_accel_g_t accel;
 
-    esp_err_t ret = qma6100p_read_accel_g(&accel);
+    const TickType_t sample_period = pdMS_TO_TICKS(50);
+    TickType_t last_wake_time = xTaskGetTickCount();
 
-    if (ret == ESP_OK) {
-        ESP_LOGI(
-            TAG,
-            "QMA accel: X=%.3f g Y=%.3f g Z=%.3f g",
-            accel.x_g,
-            accel.y_g,
-            accel.z_g
-        );
-    } else {
-        ESP_LOGE(
-            TAG,
-            "Failed to read QMA6100P acceleration: %s",
-            esp_err_to_name(ret)
+    for(int i = 0; i < 40; i++)
+    {
+        qma6100p_accel_g_t accel;
+        esp_err_t ret = qma6100p_read_accel_g(&accel);
+        if (ret == ESP_OK) {
+            float accel_norm = sqrtf(
+                accel.x_g * accel.x_g +
+                accel.y_g * accel.y_g +
+                accel.z_g * accel.z_g
+            );
+            ESP_LOGI(
+                TAG,
+                "QMA accel: X=%.3f g Y=%.3f g Z=%.3f g |a|=%.3f g",
+                accel.x_g,
+                accel.y_g,
+                accel.z_g,
+                accel_norm
+            );
+        } else {
+            ESP_LOGE(
+                TAG,
+                "Failed to read QMA6100P acceleration: %s",
+                esp_err_to_name(ret)
+            );
+        }
+
+        vTaskDelayUntil(
+            &last_wake_time,
+            sample_period
         );
     }
+
     
     ButtonState buttonstate = STATE_IDLE;
     while(1) {
