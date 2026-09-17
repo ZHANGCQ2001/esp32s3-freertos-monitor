@@ -573,3 +573,28 @@ esp_err_t qma6100p_read_raw(qma6100p_raw_accel_t *raw)
 
     return ESP_OK;
 }
+
+/*
+ * main.c 目前需要它来计算具体的加速度值。
+ *
+ */
+esp_err_t qma6100p_read_accel_g(qma6100p_accel_g_t *accel)
+{
+    if(accel == NULL) return ESP_ERR_INVALID_ARG;
+
+    esp_err_t ret;
+    uint8_t data[QMA6100P_ACCEL_DATA_LEN];
+
+    ret = qma6100p_read_regs(
+        QMA6100P_XOUTL_REG, 
+        data, 
+        sizeof(data)
+    );
+    if(ret != ESP_OK) return ret;
+
+    accel->x_g = qma6100p_decode_axis(data[0], data[1]) / 1024.0;
+    accel->y_g = qma6100p_decode_axis(data[2], data[3]) / 1024.0;
+    accel->z_g = qma6100p_decode_axis(data[4], data[5]) / 1024.0;
+
+    return ESP_OK;
+}

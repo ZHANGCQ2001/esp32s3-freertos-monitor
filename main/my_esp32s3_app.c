@@ -115,6 +115,8 @@ void app_main(void)
     vTaskDelay(pdMS_TO_TICKS(100));
     qma6100p_raw_accel_t raw;
     esp_err_t ret = qma6100p_read_raw(&raw);
+    qma6100p_accel_g_t accel;
+    ret = qma6100p_read_accel_g(&accel);
     if (ret == ESP_OK) {
         ESP_LOGI(
             TAG,
