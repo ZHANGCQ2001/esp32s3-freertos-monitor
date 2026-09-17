@@ -78,6 +78,8 @@
 #define QMA6100P_XOUTL_REG       0x01
 #define QMA6100P_ACCEL_DATA_LEN  6
 
+#define QMA6100P_COUNTS_PER_G_8G  1024.0f
+
 /* ==================== 模块内部状态 ==================== */
 
 /*
@@ -580,21 +582,20 @@ esp_err_t qma6100p_read_raw(qma6100p_raw_accel_t *raw)
  */
 esp_err_t qma6100p_read_accel_g(qma6100p_accel_g_t *accel)
 {
-    if(accel == NULL) return ESP_ERR_INVALID_ARG;
+    if (accel == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
 
-    esp_err_t ret;
-    uint8_t data[QMA6100P_ACCEL_DATA_LEN];
+    qma6100p_raw_accel_t raw;
 
-    ret = qma6100p_read_regs(
-        QMA6100P_XOUTL_REG, 
-        data, 
-        sizeof(data)
-    );
-    if(ret != ESP_OK) return ret;
+    esp_err_t ret = qma6100p_read_raw(&raw);
+    if (ret != ESP_OK) {
+        return ret;
+    }
 
-    accel->x_g = qma6100p_decode_axis(data[0], data[1]) / 1024.0;
-    accel->y_g = qma6100p_decode_axis(data[2], data[3]) / 1024.0;
-    accel->z_g = qma6100p_decode_axis(data[4], data[5]) / 1024.0;
+    accel->x_g = (float)raw.x / QMA6100P_COUNTS_PER_G_8G;
+    accel->y_g = (float)raw.y / QMA6100P_COUNTS_PER_G_8G;
+    accel->z_g = (float)raw.z / QMA6100P_COUNTS_PER_G_8G;
 
     return ESP_OK;
 }

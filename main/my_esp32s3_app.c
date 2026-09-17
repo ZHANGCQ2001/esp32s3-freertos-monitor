@@ -113,22 +113,22 @@ void app_main(void)
                 esp_err_to_name(qma_ret));
     }
     vTaskDelay(pdMS_TO_TICKS(100));
-    qma6100p_raw_accel_t raw;
-    esp_err_t ret = qma6100p_read_raw(&raw);
     qma6100p_accel_g_t accel;
-    ret = qma6100p_read_accel_g(&accel);
+
+    esp_err_t ret = qma6100p_read_accel_g(&accel);
+
     if (ret == ESP_OK) {
         ESP_LOGI(
             TAG,
-            "QMA raw: X=%d Y=%d Z=%d",
-            raw.x,
-            raw.y,
-            raw.z
+            "QMA accel: X=%.3f g Y=%.3f g Z=%.3f g",
+            accel.x_g,
+            accel.y_g,
+            accel.z_g
         );
     } else {
         ESP_LOGE(
             TAG,
-            "Failed to read QMA6100P raw data: %s",
+            "Failed to read QMA6100P acceleration: %s",
             esp_err_to_name(ret)
         );
     }
