@@ -3,6 +3,7 @@
 #include "esp_log.h"
 #include "freertos/task.h"
 #include "sensor_data.h"
+#include "esp_cpu.h"
 
 /*标准库*/
 #include <math.h>
@@ -15,7 +16,7 @@ static void process_task(void *arg)
     process_task_context_t* context_p = (process_task_context_t*)arg;
     QueueHandle_t input_queue = context_p->input_queue;
     QueueHandle_t output_queue = context_p->output_queue;
-    uint32_t sequence = 0;
+    uint32_t processed_count  = 0;
     while(1) {
         sensor_sample_t sample;
         processed_sample_t processed_sample;
@@ -24,7 +25,7 @@ static void process_task(void *arg)
             &sample, 
             portMAX_DELAY
         ) == pdTRUE) {
-            sequence++;
+            processed_count ++;
             float norm = sqrtf(
                 sample.accel.x_g * sample.accel.x_g +
                 sample.accel.y_g * sample.accel.y_g +
@@ -43,13 +44,13 @@ static void process_task(void *arg)
                 sample.timestamp_us
             );
             if (xQueueSend(output_queue, &processed_sample, 0) != pdTRUE) {
-                ESP_LOGW(TAG, "Sensor queue full, processed_sample dropped");
+                ESP_LOGW(TAG, "Output queue full, processed sample dropped");
             }
         }
 
         
 
-        if (sequence % 20 == 0) {
+        if (processed_count  % 20 == 0) {
             ESP_LOGI(
                 TAG,
                 "core=%d, stack free min=%u bytes",
