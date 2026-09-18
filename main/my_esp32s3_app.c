@@ -10,6 +10,7 @@
 #include "qma6100p.h"
 #include "sensor_task.h"
 #include "process_task.h"
+#include "sensor_data.h"
 
 /*标准库*/
 #include <string.h>
