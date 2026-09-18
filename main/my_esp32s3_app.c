@@ -9,6 +9,7 @@
 #include "driver/uart.h"
 #include "qma6100p.h"
 #include "sensor_task.h"
+#include "process_task.h"
 
 /*标准库*/
 #include <string.h>
@@ -108,6 +109,7 @@ void app_main(void)
         return;
     }
     ESP_ERROR_CHECK(sensor_task_start(sensor_queue));
+    ESP_ERROR_CHECK(process_task_start(sensor_queue));
 
     
     ButtonState buttonstate = STATE_IDLE;
