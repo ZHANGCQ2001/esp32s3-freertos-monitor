@@ -3,6 +3,7 @@
 #include "esp_check.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
+#include "freertos/queue.h"
 #include "freertos/task.h"
 #include "esp_timer.h"
 #include "driver/uart.h"
@@ -96,7 +97,17 @@ void app_main(void)
     ESP_ERROR_CHECK(board_uart_init(uart_num, 115200));
     ESP_ERROR_CHECK(qma6100p_init());
 
-    ESP_ERROR_CHECK(sensor_task_start());
+    // 创建队列，将数据从sensor_task转移到process_task
+    QueueHandle_t sensor_queue = xQueueCreate(
+        10,
+        sizeof(qma6100p_accel_g_t)
+    );
+
+    if (sensor_queue == NULL) {
+        ESP_LOGE(TAG, "Failed to create sensor queue");
+        return;
+    }
+    ESP_ERROR_CHECK(sensor_task_start(sensor_queue));
 
     
     ButtonState buttonstate = STATE_IDLE;

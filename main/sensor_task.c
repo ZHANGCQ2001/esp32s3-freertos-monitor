@@ -15,6 +15,7 @@ static const char *TAG = "sensor_task";
 static void sensor_task(void *arg)
 {
     vTaskDelay(pdMS_TO_TICKS(100));
+    QueueHandle_t queue = (QueueHandle_t)arg;
     
     const TickType_t sample_period = pdMS_TO_TICKS(50);
     TickType_t last_wake_time = xTaskGetTickCount();
@@ -23,7 +24,6 @@ static void sensor_task(void *arg)
 
     while (1) {
         qma6100p_accel_g_t accel;
-
         esp_err_t ret = qma6100p_read_accel_g(&accel);
 
         if (ret == ESP_OK) {
@@ -41,6 +41,9 @@ static void sensor_task(void *arg)
                 accel.z_g,
                 norm
             );
+            if (xQueueSend(queue, &accel, 0) != pdTRUE) {
+                ESP_LOGW(TAG, "Sensor queue full, sample dropped");
+            }
         } else {
             ESP_LOGE(
                 TAG,
@@ -66,13 +69,13 @@ static void sensor_task(void *arg)
     }
 }
 
-esp_err_t sensor_task_start(void)
+esp_err_t sensor_task_start(QueueHandle_t queue)
 {
     BaseType_t ret = xTaskCreate( // 任务函数、任务名、栈大小、传递参数、优先级、Task Handle 输出
         sensor_task,
         "sensor_task",
         4096,
-        NULL,
+        queue,
         5,
         NULL
     );
