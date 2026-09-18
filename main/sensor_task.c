@@ -2,7 +2,6 @@
 #include "sensor_task.h"
 #include "esp_log.h"
 #include "freertos/task.h"
-#include "qma6100p.h"
 #include "esp_cpu.h"
 
 /*标准库*/
@@ -10,7 +9,7 @@
 
 
 static const char *TAG = "sensor_task";
-
+static uint32_t sequence = 0;
 static void sensor_task(void *arg)
 {
     vTaskDelay(pdMS_TO_TICKS(100));
@@ -22,11 +21,13 @@ static void sensor_task(void *arg)
     uint32_t sample_count = 0;
 
     while (1) {
-        qma6100p_accel_g_t accel;
-        esp_err_t ret = qma6100p_read_accel_g(&accel);
+        qma6100p_frame_g_t accel_frame;
+        esp_err_t ret = qma6100p_read_accel_g(&accel_frame.accel);
 
         if (ret == ESP_OK) {
-            if (xQueueSend(queue, &accel, 0) != pdTRUE) {
+            accel_frame.timestamp = last_wake_time;
+            accel_frame.sequence = sample_count++;
+            if (xQueueSend(queue, &accel_frame.accel, 0) != pdTRUE) {
                 ESP_LOGW(TAG, "Sensor queue full, sample dropped");
             } else {
                 ESP_LOGI(
@@ -35,13 +36,6 @@ static void sensor_task(void *arg)
                     (unsigned)uxQueueMessagesWaiting(queue)
                 );
             }
-        // } else {
-        //     ESP_LOGE(
-        //         TAG,
-        //         "QMA read failed: %s",
-        //         esp_err_to_name(ret)
-        //     );
-        // }
 
         sample_count++;
         if (sample_count % 20 == 0) {

@@ -101,7 +101,7 @@ void app_main(void)
     // 创建队列，将数据从sensor_task转移到process_task
     QueueHandle_t sensor_queue = xQueueCreate(
         10,
-        sizeof(qma6100p_accel_g_t)
+        sizeof(qma6100p_frame_g_t)
     );
 
     if (sensor_queue == NULL) {
