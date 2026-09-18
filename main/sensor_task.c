@@ -3,13 +3,13 @@
 #include "esp_log.h"
 #include "freertos/task.h"
 #include "esp_cpu.h"
+#include "sensor_data.h"
+#include "esp_timer.h"
 
 /*标准库*/
-// #include <math.h>
 
 
 static const char *TAG = "sensor_task";
-static uint32_t sequence = 0;
 static void sensor_task(void *arg)
 {
     vTaskDelay(pdMS_TO_TICKS(100));
@@ -21,13 +21,13 @@ static void sensor_task(void *arg)
     uint32_t sample_count = 0;
 
     while (1) {
-        qma6100p_frame_g_t accel_frame;
-        esp_err_t ret = qma6100p_read_accel_g(&accel_frame.accel);
+        sensor_sample_t sample;
+        esp_err_t ret = qma6100p_read_accel_g(&sample.accel);
 
         if (ret == ESP_OK) {
-            accel_frame.timestamp = last_wake_time;
-            accel_frame.sequence = sample_count++;
-            if (xQueueSend(queue, &accel_frame.accel, 0) != pdTRUE) {
+            sample.timestamp_us = esp_timer_get_time();
+            sample.sequence = sample_count;
+            if (xQueueSend(queue, &sample, 0) != pdTRUE) {
                 ESP_LOGW(TAG, "Sensor queue full, sample dropped");
             } else {
                 ESP_LOGI(
@@ -36,6 +36,7 @@ static void sensor_task(void *arg)
                     (unsigned)uxQueueMessagesWaiting(queue)
                 );
             }
+        }
 
         sample_count++;
         if (sample_count % 20 == 0) {

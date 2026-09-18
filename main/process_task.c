@@ -3,8 +3,7 @@
 #include "esp_log.h"
 #include "freertos/task.h"
 #include "qma6100p.h"
-#include "sensor_task.h"
-// #include "esp_cpu.h"
+#include "sensor_data.h"
 
 /*标准库*/
 #include <math.h>
@@ -16,23 +15,23 @@ static void process_task(void *arg)
     QueueHandle_t queue = (QueueHandle_t)arg;
 
     while(1) {
-        qma6100p_frame_g_t accel_frame;
+        sensor_sample_t sample;
         if(xQueueReceive(
             queue,
-            &accel_frame.accel, 
+            &sample, 
             portMAX_DELAY
         ) == pdTRUE) {
             float norm = sqrtf(
-                accel_frame.accel.x_g * accel_frame.accel.x_g +
-                accel_frame.accel.y_g * accel_frame.accel.y_g +
-                accel_frame.accel.z_g * accel_frame.accel.z_g
+                sample.accel.x_g * sample.accel.x_g +
+                sample.accel.y_g * sample.accel.y_g +
+                sample.accel.z_g * sample.accel.z_g
             );
             ESP_LOGI(
                 TAG,
                 "X=%.3f Y=%.3f Z=%.3f |a|=%.3f g",
-                accel_frame.accel.x_g,
-                accel_frame.accel.y_g,
-                accel_frame.accel.z_g,
+                sample.accel.x_g,
+                sample.accel.y_g,
+                sample.accel.z_g,
                 norm
             );
         }
