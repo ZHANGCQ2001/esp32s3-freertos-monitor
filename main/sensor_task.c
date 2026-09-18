@@ -5,6 +5,7 @@
 #include "esp_log.h"
 #include "esp_cpu.h"
 #include "esp_timer.h"
+#include "freertos/task.h"
 
 /*标准库*/
 
@@ -38,14 +39,7 @@ static void sensor_task(void *arg)
         }
 
         sequence++;
-        if (sequence % 20 == 0) {
-            ESP_LOGI(
-                TAG,
-                "core=%d, stack free min=%u bytes",
-                esp_cpu_get_core_id(),
-                (unsigned)uxTaskGetStackHighWaterMark(NULL)
-            );
-        }
+
 
         vTaskDelayUntil(
             &last_wake_time,

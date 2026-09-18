@@ -104,17 +104,26 @@ void app_main(void)
         10,
         sizeof(sensor_sample_t)
     );
-
     if (sensor_queue == NULL) {
         ESP_LOGE(TAG, "Failed to create sensor queue");
         return;
     }
 
-    // 先创建数据处理线程，让它阻塞等待
-    ESP_ERROR_CHECK(process_task_start(sensor_queue));
-    ESP_ERROR_CHECK(sensor_task_start(sensor_queue));
-    
+    // 创建队列，将数据从process_task转移到udp_task
+    QueueHandle_t process_queue = xQueueCreate(
+        10,
+        sizeof(processed_sample_t)
+    );
+    if (process_queue == NULL) {
+        ESP_LOGE(TAG, "Failed to create process queue");
+        return;
+    }
 
+    process_task_context_t context = {sensor_queue, process_queue};
+
+    // 先创建数据处理线程，让它阻塞等待
+    ESP_ERROR_CHECK(process_task_start(&context));
+    ESP_ERROR_CHECK(sensor_task_start(sensor_queue));
     
     ButtonState buttonstate = STATE_IDLE;
     while(1) {
