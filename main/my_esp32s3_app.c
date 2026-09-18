@@ -108,8 +108,11 @@ void app_main(void)
         ESP_LOGE(TAG, "Failed to create sensor queue");
         return;
     }
-    ESP_ERROR_CHECK(sensor_task_start(sensor_queue));
+
+    // 先创建数据处理线程，让它阻塞等待
     ESP_ERROR_CHECK(process_task_start(sensor_queue));
+    ESP_ERROR_CHECK(sensor_task_start(sensor_queue));
+    
 
     
     ButtonState buttonstate = STATE_IDLE;

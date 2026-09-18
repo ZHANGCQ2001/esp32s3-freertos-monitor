@@ -3,7 +3,7 @@
 #include "esp_log.h"
 #include "freertos/task.h"
 #include "qma6100p.h"
-#include "esp_cpu.h"
+// #include "esp_cpu.h"
 
 /*标准库*/
 #include <math.h>
@@ -34,12 +34,15 @@ static void process_task(void *arg)
                 accel.z_g,
                 norm
             );
+
+            // ESP_LOGI(
+            //     TAG,
+            //     "queue pending=%u",
+            //     (unsigned)uxQueueMessagesWaiting(queue)
+            // );
         }
     }
 }
-
-
-
 
 
 esp_err_t process_task_start(QueueHandle_t queue)

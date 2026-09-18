@@ -6,7 +6,7 @@
 #include "esp_cpu.h"
 
 /*标准库*/
-#include <math.h>
+// #include <math.h>
 
 
 static const char *TAG = "sensor_task";
@@ -28,14 +28,20 @@ static void sensor_task(void *arg)
         if (ret == ESP_OK) {
             if (xQueueSend(queue, &accel, 0) != pdTRUE) {
                 ESP_LOGW(TAG, "Sensor queue full, sample dropped");
+            } else {
+                ESP_LOGI(
+                    TAG,
+                    "queue pending=%u",
+                    (unsigned)uxQueueMessagesWaiting(queue)
+                );
             }
-        } else {
-            ESP_LOGE(
-                TAG,
-                "QMA read failed: %s",
-                esp_err_to_name(ret)
-            );
-        }
+        // } else {
+        //     ESP_LOGE(
+        //         TAG,
+        //         "QMA read failed: %s",
+        //         esp_err_to_name(ret)
+        //     );
+        // }
 
         sample_count++;
         if (sample_count % 20 == 0) {
