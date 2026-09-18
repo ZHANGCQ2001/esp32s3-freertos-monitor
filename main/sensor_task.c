@@ -4,6 +4,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "qma6100p.h"
+#include "esp_cpu.h"
 
 /*标准库*/
 #include <math.h>
@@ -13,8 +14,12 @@ static const char *TAG = "sensor_task";
 
 static void sensor_task(void *arg)
 {
+    vTaskDelay(pdMS_TO_TICKS(100));
+    
     const TickType_t sample_period = pdMS_TO_TICKS(50);
     TickType_t last_wake_time = xTaskGetTickCount();
+
+    uint32_t sample_count = 0;
 
     while (1) {
         qma6100p_accel_g_t accel;
@@ -44,6 +49,16 @@ static void sensor_task(void *arg)
             );
         }
 
+        sample_count++;
+        if (sample_count % 20 == 0) {
+            ESP_LOGI(
+                TAG,
+                "core=%d, stack free min=%u bytes",
+                esp_cpu_get_core_id(),
+                (unsigned)uxTaskGetStackHighWaterMark(NULL)
+            );
+        }
+
         vTaskDelayUntil(
             &last_wake_time,
             sample_period
@@ -53,7 +68,7 @@ static void sensor_task(void *arg)
 
 esp_err_t sensor_task_start(void)
 {
-    BaseType_t ret = xTaskCreate(
+    BaseType_t ret = xTaskCreate( // 任务函数、任务名、栈大小、传递参数、优先级、Task Handle 输出
         sensor_task,
         "sensor_task",
         4096,
