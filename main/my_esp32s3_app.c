@@ -125,7 +125,7 @@ void app_main(void)
         .output_queue = processed_queue
     };
 
-    // 先创建数据处理线程，让它阻塞等待
+    // 从流水线末端开始创建任务，使消费者先阻塞等待数据
     ESP_ERROR_CHECK(udp_task_start(processed_queue));
     ESP_ERROR_CHECK(process_task_start(&process_context));
     ESP_ERROR_CHECK(sensor_task_start(sensor_queue));

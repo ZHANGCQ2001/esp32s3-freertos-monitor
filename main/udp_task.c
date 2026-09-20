@@ -5,13 +5,14 @@
 #include "sensor_data.h"
 #include "esp_cpu.h"
 
+#include <inttypes.h>
+
 
 static const char *TAG = "udp_task";
 
 static void udp_task(void *arg)
 {
-    QueueHandle_t queue = (QueueHandle_t*)arg;
-    uint32_t processed_count  = 0;
+    QueueHandle_t queue = (QueueHandle_t)arg;
     while(1) {
         processed_sample_t processed_sample;
         if(xQueueReceive(
@@ -19,7 +20,6 @@ static void udp_task(void *arg)
             &processed_sample, 
             portMAX_DELAY
         ) == pdTRUE) {
-            processed_count ++;
             ESP_LOGI(
                 TAG,
                 "X=%.3f Y=%.3f Z=%.3f |a|=%.3f g seq=%" PRIu32 " ts=%" PRId64 " us",
