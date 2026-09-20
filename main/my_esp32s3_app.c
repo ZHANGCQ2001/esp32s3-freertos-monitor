@@ -11,6 +11,7 @@
 #include "sensor_task.h"
 #include "process_task.h"
 #include "sensor_data.h"
+#include "udp_task.h"
 
 /*标准库*/
 #include <string.h>
@@ -127,6 +128,7 @@ void app_main(void)
     // 先创建数据处理线程，让它阻塞等待
     ESP_ERROR_CHECK(process_task_start(&process_context));
     ESP_ERROR_CHECK(sensor_task_start(sensor_queue));
+    ESP_ERROR_CHECK(udp_task_start(processed_queue));
     
     ButtonState buttonstate = STATE_IDLE;
     while(1) {

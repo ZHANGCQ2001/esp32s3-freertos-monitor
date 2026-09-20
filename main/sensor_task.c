@@ -40,7 +40,6 @@ static void sensor_task(void *arg)
 
         sequence++;
 
-
         vTaskDelayUntil(
             &last_wake_time,
             sample_period
