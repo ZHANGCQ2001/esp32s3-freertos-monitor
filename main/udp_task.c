@@ -41,7 +41,7 @@ esp_err_t udp_task_start(QueueHandle_t queue)
         "udp_task",
         4096,
         queue,
-        4,
+        3,
         NULL
     );
 
