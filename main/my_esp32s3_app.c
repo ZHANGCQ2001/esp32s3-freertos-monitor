@@ -12,6 +12,7 @@
 #include "process_task.h"
 #include "sensor_data.h"
 #include "udp_task.h"
+#include "wifi_sta.h"
 
 /*标准库*/
 #include <string.h>
@@ -129,6 +130,7 @@ void app_main(void)
     ESP_ERROR_CHECK(udp_task_start(processed_queue));
     ESP_ERROR_CHECK(process_task_start(&process_context));
     ESP_ERROR_CHECK(sensor_task_start(sensor_queue));
+    ESP_ERROR_CHECK(wifi_sta_start());
     
     
     ButtonState buttonstate = STATE_IDLE;

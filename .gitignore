@@ -3,3 +3,4 @@ sdkconfig.old
 .vscode/
 tmp/
 .agents/
+components/wifi_sta/private_include/wifi_credentials.h

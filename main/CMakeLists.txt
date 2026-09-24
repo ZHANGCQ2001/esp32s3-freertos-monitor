@@ -3,6 +3,7 @@ idf_component_register(
     INCLUDE_DIRS "include"
     REQUIRES
         qma6100p
+        wifi_sta
         esp_timer
         driver
 )
