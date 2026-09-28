@@ -7,6 +7,10 @@
 #include "esp_wifi.h"
 #include "nvs_flash.h"
 #include "esp_check.h"
+#include "freertos/event_groups.h"
+
+#define WIFI_CONNECTED_BIT BIT0
+#define WIFI_FAILED_BIT    BIT1
 
 static const char *TAG = "wifi_sta";
 static const int MAX_RETRY = 15;
@@ -39,7 +43,7 @@ static void wifi_event_handler(
         ESP_LOGW(
             TAG,
             "Wi-Fi disconnected, reason=%d, retrying %d / %d...",
-            event->reason, retry_count++, MAX_RETRY
+            event->reason, ++retry_count, MAX_RETRY
         );
 
         xEventGroupClearBits(
