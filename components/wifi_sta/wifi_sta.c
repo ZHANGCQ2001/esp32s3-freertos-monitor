@@ -9,12 +9,15 @@
 #include "esp_check.h"
 
 static const char *TAG = "wifi_sta";
+static const int MAX_RETRY = 15;
+static int retry_count = 0;
+static EventGroupHandle_t wifi_event_group;
 static void wifi_event_handler(
     void *arg,
     esp_event_base_t event_base,
     int32_t event_id,
     void *event_data
-)
+);
 
 
 static void wifi_event_handler(
@@ -30,12 +33,30 @@ static void wifi_event_handler(
         ESP_LOGI(TAG, "Wi-Fi STA started, connecting...");
         esp_wifi_connect();
     } else if (event_base == WIFI_EVENT &&
-         event_id == WIFI_EVENT_STA_DISCONNECTED) {
-        ESP_LOGW(TAG, "Wi-Fi disconnected, retrying...");
-        esp_wifi_connect();
+        event_id == WIFI_EVENT_STA_DISCONNECTED) {
+        wifi_event_sta_disconnected_t *event =
+            (wifi_event_sta_disconnected_t *)event_data;
+        ESP_LOGW(
+            TAG,
+            "Wi-Fi disconnected, reason=%d, retrying %d / %d...",
+            event->reason, retry_count++, MAX_RETRY
+        );
+
+        xEventGroupClearBits(
+            wifi_event_group,
+            WIFI_CONNECTED_BIT
+        );
+
+        if (retry_count < MAX_RETRY) {
+            esp_wifi_connect();
+        } else {
+            xEventGroupSetBits(
+                wifi_event_group,
+                WIFI_FAILED_BIT
+            );
+        }
     } else if (event_base == IP_EVENT &&
                event_id == IP_EVENT_STA_GOT_IP) {
-
         ip_event_got_ip_t *event =
             (ip_event_got_ip_t *)event_data;
 
@@ -44,6 +65,15 @@ static void wifi_event_handler(
             "Got IP: " IPSTR,
             IP2STR(&event->ip_info.ip)
         );
+        xEventGroupSetBits(
+            wifi_event_group,
+            WIFI_CONNECTED_BIT
+        );
+        xEventGroupClearBits(
+            wifi_event_group,
+            WIFI_FAILED_BIT
+        );
+        retry_count = 0;
     }
 }
 
@@ -51,6 +81,12 @@ static void wifi_event_handler(
 
 esp_err_t wifi_sta_start(void)
 {
+    wifi_event_group = xEventGroupCreate();
+    retry_count = 0;
+    if (wifi_event_group == NULL) {
+        return ESP_ERR_NO_MEM;
+    }
+
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES ||
         ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -62,12 +98,12 @@ esp_err_t wifi_sta_start(void)
         );
 
         ret = nvs_flash_init();
-        ESP_RETURN_ON_ERROR(
-            ret,
-            TAG,
-            "Failed to initialize NVS"
-        );
     }
+    ESP_RETURN_ON_ERROR(
+        ret,
+        TAG,
+        "Failed to initialize NVS"
+    );
 
     // 网络系统
     ESP_RETURN_ON_ERROR(

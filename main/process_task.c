@@ -46,17 +46,15 @@ static void process_task(void *arg)
             if (xQueueSend(output_queue, &processed_sample, 0) != pdTRUE) {
                 ESP_LOGW(TAG, "Output queue full, processed sample dropped");
             }
-        }
 
-        
-
-        if (processed_count  % 20 == 0) {
-            ESP_LOGI(
-                TAG,
-                "core=%d, stack free min=%u bytes",
-                esp_cpu_get_core_id(),
-                (unsigned)uxTaskGetStackHighWaterMark(NULL)
-            );
+            if (processed_count  % 20 == 0) {
+                ESP_LOGI(
+                    TAG,
+                    "core=%d, stack free min=%u bytes",
+                    esp_cpu_get_core_id(),
+                    (unsigned)uxTaskGetStackHighWaterMark(NULL)
+                );
+            }
         }
     }
 }

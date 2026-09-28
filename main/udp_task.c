@@ -2,8 +2,9 @@
 #include "esp_log.h"
 #include "freertos/queue.h"
 #include "freertos/task.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/event_groups.h"
 #include "sensor_data.h"
-#include "esp_cpu.h"
 
 #include <inttypes.h>
 

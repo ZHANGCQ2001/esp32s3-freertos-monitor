@@ -3,7 +3,6 @@
 #include "esp_err.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
-#include "sensor_data.h"
 
 typedef struct {
     QueueHandle_t input_queue;
