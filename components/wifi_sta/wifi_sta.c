@@ -69,20 +69,20 @@ static void wifi_event_handler(
             "Got IP: " IPSTR,
             IP2STR(&event->ip_info.ip)
         );
-        xEventGroupSetBits(
-            wifi_event_group,
-            WIFI_CONNECTED_BIT
-        );
         xEventGroupClearBits(
             wifi_event_group,
             WIFI_FAILED_BIT
+        );
+        xEventGroupSetBits(
+            wifi_event_group,
+            WIFI_CONNECTED_BIT
         );
         retry_count = 0;
     }
 }
 
 
-
+// 外部接口
 esp_err_t wifi_sta_start(void)
 {
     wifi_event_group = xEventGroupCreate();
@@ -168,7 +168,7 @@ esp_err_t wifi_sta_start(void)
         "Failed to register IP event handler"
     );
 
-    // 设置Wifi名和密码
+    // 设置Wifi名和密码，用于登录
     wifi_config_t wifi_config = {
         .sta = {
             .ssid = WIFI_STA_SSID,
@@ -197,5 +197,28 @@ esp_err_t wifi_sta_start(void)
         "Failed to start Wi-Fi"
     );
     return ESP_OK;
+}
 
+
+esp_err_t wifi_sta_wait_connected(TickType_t timeout)
+{
+    if (wifi_event_group == NULL) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    EventBits_t bits = xEventGroupWaitBits(
+        wifi_event_group,                         // 等哪个 Event Group
+        WIFI_CONNECTED_BIT | WIFI_FAILED_BIT,    // 等哪些状态
+        pdFALSE,                                  // 返回后不要清 bit
+        pdFALSE,                                  // 不要求全部满足，任意一个即可
+        timeout                                   // 最多等多久
+    );
+    if (bits & WIFI_CONNECTED_BIT) {
+        return ESP_OK;
+    }
+
+    if (bits & WIFI_FAILED_BIT) {
+        return ESP_FAIL;
+    }
+
+    return ESP_ERR_TIMEOUT;
 }
