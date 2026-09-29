@@ -11,6 +11,7 @@
 #include <errno.h>
 #include <string.h>
 #include <inttypes.h>
+#include <stdio.h>
 
 
 static const char *TAG = "udp_task";
@@ -86,6 +87,23 @@ static void udp_task(void *arg)
                 processed_sample.norm_g,
                 processed_sample.sample.sequence,
                 processed_sample.sample.timestamp_us
+            );
+            if (len < 0) {
+                ESP_LOGE(TAG, "Failed to format UDP payload");
+                continue;
+            }
+
+            if ((size_t)len >= sizeof(payload)) {
+                ESP_LOGW(TAG, "UDP payload truncated");
+                continue;
+            }
+            sendto(
+                sock,
+                payload,
+                len,
+                0,
+                (struct sockaddr *)&dest_addr,
+                sizeof(dest_addr)
             );
         }
     }
