@@ -75,8 +75,10 @@ static void udp_task(void *arg)
             if(!wifi_sta_is_connected()) {
                 continue;
             }
-            ESP_LOGI(
-                TAG,
+            char payload[128];
+            int len = snprintf(
+                payload,
+                sizeof(payload),
                 "X=%.3f Y=%.3f Z=%.3f |a|=%.3f g seq=%" PRIu32 " ts=%" PRId64 " us",
                 processed_sample.sample.accel.x_g,
                 processed_sample.sample.accel.y_g,
