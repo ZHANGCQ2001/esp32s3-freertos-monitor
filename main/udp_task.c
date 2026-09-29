@@ -4,6 +4,7 @@
 #include "freertos/task.h"
 #include "freertos/FreeRTOS.h"
 #include "sensor_data.h"
+#include "wifi_sta.h"
 
 #include <inttypes.h>
 
@@ -20,6 +21,9 @@ static void udp_task(void *arg)
             &processed_sample, 
             portMAX_DELAY
         ) == pdTRUE) {
+            if(!wifi_sta_is_connected()) {
+                continue;
+            }
             ESP_LOGI(
                 TAG,
                 "X=%.3f Y=%.3f Z=%.3f |a|=%.3f g seq=%" PRIu32 " ts=%" PRId64 " us",

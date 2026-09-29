@@ -207,7 +207,7 @@ esp_err_t wifi_sta_wait_connected(TickType_t timeout)
     }
     EventBits_t bits = xEventGroupWaitBits(
         wifi_event_group,                         // 等哪个 Event Group
-        WIFI_CONNECTED_BIT | WIFI_FAILED_BIT,    // 等哪些状态
+        WIFI_CONNECTED_BIT | WIFI_FAILED_BIT,     // 等哪些状态
         pdFALSE,                                  // 返回后不要清 bit
         pdFALSE,                                  // 不要求全部满足，任意一个即可
         timeout                                   // 最多等多久
@@ -221,4 +221,15 @@ esp_err_t wifi_sta_wait_connected(TickType_t timeout)
     }
 
     return ESP_ERR_TIMEOUT;
+}
+
+bool wifi_sta_is_connected(void)
+{
+    if (wifi_event_group == NULL) {
+        return false;
+    }
+
+    EventBits_t bits = xEventGroupGetBits(wifi_event_group);
+
+    return (bits & WIFI_CONNECTED_BIT) != 0;
 }
