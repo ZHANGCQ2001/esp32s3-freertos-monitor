@@ -6,9 +6,10 @@
 #include "sensor_data.h"
 #include "wifi_sta.h"
 #include "lwip/sockets.h"
+#include "udp_config.h"
+
 #include <errno.h>
 #include <string.h>
-
 #include <inttypes.h>
 
 
@@ -28,12 +29,40 @@ static void udp_task(void *arg)
             errno,
             strerror(errno)
         );
+        vTaskDelete(NULL);
+    } else {
+        ESP_LOGI(
+            TAG,
+            "UDP socket created, fd=%d",
+            sock
+        );
     }
-    ESP_LOGI(
-        TAG,
-        "UDP socket created, fd=%d",
-        sock
+    // 创建从机地址信息
+    struct sockaddr_in dest_addr = {
+        .sin_family = AF_INET,
+        .sin_port = htons(UDP_DEST_PORT),
+    };
+    int ret = inet_pton(
+        AF_INET,
+        UDP_DEST_IP,
+        &dest_addr.sin_addr
     );
+    if (ret < 0) {
+        // 失败
+        ESP_LOGE(
+            TAG,
+            "Failed to bind remote IP: errno=%d",
+            ret
+        );
+        vTaskDelete(NULL);
+    } else {
+        ESP_LOGI(
+            TAG,
+            "Bind remote IP, address=%d",
+            dest_addr.sin_addr
+        );
+    }
+    
 
     while(1) {
         processed_sample_t processed_sample;
