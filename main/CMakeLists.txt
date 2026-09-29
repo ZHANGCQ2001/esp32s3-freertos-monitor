@@ -6,4 +6,5 @@ idf_component_register(
         wifi_sta
         esp_timer
         driver
+        lwip
 )

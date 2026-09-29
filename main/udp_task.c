@@ -5,6 +5,9 @@
 #include "freertos/FreeRTOS.h"
 #include "sensor_data.h"
 #include "wifi_sta.h"
+#include "lwip/sockets.h"
+#include <errno.h>
+#include <string.h>
 
 #include <inttypes.h>
 
@@ -14,6 +17,24 @@ static const char *TAG = "udp_task";
 static void udp_task(void *arg)
 {
     QueueHandle_t queue = (QueueHandle_t)arg;
+
+    // 创建socket
+    int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (sock < 0) {
+        // 失败
+        ESP_LOGE(
+            TAG,
+            "Failed to create UDP socket: errno=%d (%s)",
+            errno,
+            strerror(errno)
+        );
+    }
+    ESP_LOGI(
+        TAG,
+        "UDP socket created, fd=%d",
+        sock
+    );
+
     while(1) {
         processed_sample_t processed_sample;
         if(xQueueReceive(
@@ -40,6 +61,7 @@ static void udp_task(void *arg)
 
 esp_err_t udp_task_start(QueueHandle_t queue)
 {
+    // 创建任务
     BaseType_t ret = xTaskCreate(
         udp_task,
         "udp_task",
