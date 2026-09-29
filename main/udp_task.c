@@ -30,13 +30,12 @@ static void udp_task(void *arg)
             strerror(errno)
         );
         vTaskDelete(NULL);
-    } else {
-        ESP_LOGI(
-            TAG,
-            "UDP socket created, fd=%d",
-            sock
-        );
     }
+    ESP_LOGI(
+        TAG,
+        "UDP socket created, fd=%d",
+        sock
+    );
     // 创建从机地址信息
     struct sockaddr_in dest_addr = {
         .sin_family = AF_INET,
@@ -47,19 +46,21 @@ static void udp_task(void *arg)
         UDP_DEST_IP,
         &dest_addr.sin_addr
     );
-    if (ret < 0) {
+    if (ret != 1) {
         // 失败
         ESP_LOGE(
             TAG,
-            "Failed to bind remote IP: errno=%d",
+            "Failed to parse destination IP: errno=%d",
             ret
         );
+        close(sock);
         vTaskDelete(NULL);
     } else {
         ESP_LOGI(
             TAG,
-            "Bind remote IP, address=%d",
-            dest_addr.sin_addr
+            "Destination IP configured, UDP destination: %s:%d",
+            UDP_DEST_IP,
+            UDP_DEST_PORT
         );
     }
     

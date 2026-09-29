@@ -4,3 +4,4 @@ sdkconfig.old
 tmp/
 .agents/
 components/wifi_sta/private_include/wifi_credentials.h
+main/private_include/udp_config.h
