@@ -36,7 +36,7 @@ static void udp_task(void *arg)
         "UDP socket created, fd=%d",
         sock
     );
-    // 创建从机地址信息
+    // 创建目标地址信息
     struct sockaddr_in dest_addr = {
         .sin_family = AF_INET,
         .sin_port = htons(UDP_DEST_PORT),
@@ -50,7 +50,7 @@ static void udp_task(void *arg)
         // 失败
         ESP_LOGE(
             TAG,
-            "Failed to parse destination IP: errno=%d",
+            "Failed to parse destination IP: ret=%d",
             ret
         );
         close(sock);
