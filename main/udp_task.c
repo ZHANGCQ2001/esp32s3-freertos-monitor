@@ -39,16 +39,22 @@ static void udp_task(void *arg)
     uint32_t total_count = 0;
 
     // 创建socket
-    int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    if (sock < 0) {
-        // 失败
-        ESP_LOGE(
-            TAG,
-            "Failed to create UDP socket: errno=%d (%s)",
-            errno,
-            strerror(errno)
-        );
-        vTaskDelete(NULL);
+    int sock = -1;
+    while (sock < 0) {
+        sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+
+        if (sock < 0) {
+            int err = errno;
+
+            ESP_LOGE(
+                TAG,
+                "Failed to create UDP socket: errno=%d (%s)",
+                err,
+                strerror(err)
+            );
+
+            vTaskDelay(pdMS_TO_TICKS(1000));
+        }
     }
     ESP_LOGI(
         TAG,
