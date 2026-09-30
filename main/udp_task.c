@@ -15,6 +15,19 @@
 
 
 static const char *TAG = "udp_task";
+typedef enum {
+    UDP_SAMPLE_SENT,
+    UDP_SAMPLE_WIFI_DROP,
+    UDP_SAMPLE_FORMAT_FAIL,
+    UDP_SAMPLE_SEND_FAIL,
+} udp_sample_result_t;
+
+static void udp_task(void *arg);
+static udp_sample_result_t udp_send_sample(
+    int sock,
+    const struct sockaddr_in *dest_addr,
+    const processed_sample_t *processed_sample
+);
 
 static void udp_task(void *arg)
 {
@@ -22,6 +35,8 @@ static void udp_task(void *arg)
     uint32_t sent_count = 0;
     uint32_t send_fail_count = 0;
     uint32_t wifi_drop_count = 0;
+    uint32_t format_fail_count = 0;
+    uint32_t total_count = 0;
 
     // 创建socket
     int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
@@ -76,61 +91,29 @@ static void udp_task(void *arg)
             &processed_sample, 
             portMAX_DELAY
         ) == pdTRUE) {
-            if(!wifi_sta_is_connected()) {
-                wifi_drop_count++;
-                continue;
-            }
-            char payload[128];
-            int len = snprintf(
-                payload,
-                sizeof(payload),
-                "X=%.3f Y=%.3f Z=%.3f |a|=%.3f g seq=%" PRIu32 " ts=%" PRId64 " us",
-                processed_sample.sample.accel.x_g,
-                processed_sample.sample.accel.y_g,
-                processed_sample.sample.accel.z_g,
-                processed_sample.norm_g,
-                processed_sample.sample.sequence,
-                processed_sample.sample.timestamp_us
-            );
-            if (len < 0) {
-                ESP_LOGE(TAG, "Failed to format UDP payload");
-                continue;
-            }
-
-            if ((size_t)len >= sizeof(payload)) {
-                ESP_LOGW(TAG, "UDP payload truncated");
-                continue;
-            }
-            ssize_t sent = sendto(
+            udp_sample_result_t transmit_status = udp_send_sample(
                 sock,
-                payload,
-                len,
-                0,
-                (struct sockaddr *)&dest_addr,
-                sizeof(dest_addr)
+                &dest_addr,
+                &processed_sample
             );
-            if(sent < 0) {
-                int err = errno;
-                send_fail_count++;
-                ESP_LOGW(
-                    TAG,
-                    "UDP send failed: errno=%d(%s)", 
-                    err,
-                    strerror(err)
-                );
-                continue;
+            switch(transmit_status) {
+                case UDP_SAMPLE_SENT:
+                    sent_count++;
+                    break;
+                case UDP_SAMPLE_WIFI_DROP:
+                    wifi_drop_count++;
+                    break;
+                case UDP_SAMPLE_FORMAT_FAIL:
+                    format_fail_count++;
+                    break;
+                case UDP_SAMPLE_SEND_FAIL:
+                    send_fail_count++;
+                    break;
+                default:
+                    break;
             }
-            sent_count++;
-            if(sent != len) {
-                ESP_LOGW(
-                    TAG,
-                    "UDP send length mismatch: expected=%d sent=%d",
-                    len,
-                    (int)sent
-                );
-            }
-
-            if(processed_sample.sample.sequence % 100 == 0) {
+            total_count++;
+            if(total_count % 100 == 0) {
                 ESP_LOGI(
                     "UDP stats",
                     "sent=%" PRIu32 " wifi_drop=%" PRIu32 " send_fail=%" PRIu32 "", 
@@ -139,6 +122,66 @@ static void udp_task(void *arg)
             }
         }
     }
+}
+
+static udp_sample_result_t udp_send_sample(
+    int sock,
+    const struct sockaddr_in *dest_addr,
+    const processed_sample_t *processed_sample
+)
+{
+    if(!wifi_sta_is_connected()) {
+        return UDP_SAMPLE_WIFI_DROP;
+    }
+    char payload[128];
+    int len = snprintf(
+        payload,
+        sizeof(payload),
+        "X=%.3f Y=%.3f Z=%.3f |a|=%.3f g seq=%" PRIu32 " ts=%" PRId64 " us",
+        processed_sample->sample.accel.x_g,
+        processed_sample->sample.accel.y_g,
+        processed_sample->sample.accel.z_g,
+        processed_sample->norm_g,
+        processed_sample->sample.sequence,
+        processed_sample->sample.timestamp_us
+    );
+    if (len < 0) {
+        ESP_LOGE(TAG, "Failed to format UDP payload");
+        return UDP_SAMPLE_FORMAT_FAIL;
+    }
+
+    if ((size_t)len >= sizeof(payload)) {
+        ESP_LOGW(TAG, "UDP payload truncated");
+        return UDP_SAMPLE_FORMAT_FAIL;
+    }
+    ssize_t sent = sendto(
+        sock,
+        payload,
+        len,
+        0,
+        (struct sockaddr *)&dest_addr,
+        sizeof(dest_addr)
+    );
+    if(sent < 0) {
+        int err = errno;
+        ESP_LOGW(
+            TAG,
+            "UDP send failed: errno=%d(%s)", 
+            err,
+            strerror(err)
+        );
+        return UDP_SAMPLE_SEND_FAIL;
+    }
+    if(sent != len) {
+        ESP_LOGW(
+            TAG,
+            "UDP send length mismatch: expected=%d sent=%d",
+            len,
+            (int)sent
+        );
+    }
+
+    return UDP_SAMPLE_SENT;
 }
 
 esp_err_t udp_task_start(QueueHandle_t queue)
