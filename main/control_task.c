@@ -91,6 +91,7 @@ static void control_task(void *arg)
     int64_t current_time = 0;
     uart_port_t uart_num  = UART_NUM_0;
     bool LED_STATE = false;
+    ESP_ERROR_CHECK(board_gpio_init());
     ESP_ERROR_CHECK(board_uart_init(uart_num, 115200));
     while(1) {
         int btn_state = board_btn_get();

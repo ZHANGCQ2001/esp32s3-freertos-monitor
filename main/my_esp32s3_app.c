@@ -13,6 +13,7 @@
 #include "sensor_data.h"
 #include "udp_task.h"
 #include "wifi_sta.h"
+#include "control_task.h"
 
 /*标准库*/
 #include <string.h>
@@ -23,11 +24,6 @@ static const char *TAG = "app_main";
 void app_main(void)
 {
     
-    
-    
-    
-
-    ESP_ERROR_CHECK(board_gpio_init());
     ESP_ERROR_CHECK(qma6100p_init());
 
     // 创建队列，将数据从sensor_task转移到process_task
@@ -62,6 +58,7 @@ void app_main(void)
     ESP_ERROR_CHECK(udp_task_start(processed_queue));
     ESP_ERROR_CHECK(process_task_start(&process_context));
     ESP_ERROR_CHECK(sensor_task_start(sensor_queue));
+    ESP_ERROR_CHECK(control_task_start());
     
     
     
