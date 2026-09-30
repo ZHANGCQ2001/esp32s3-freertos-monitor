@@ -112,6 +112,7 @@ static void udp_task(void *arg)
                     errno,
                     strerror(errno)
                 );
+                continue;
             }
             if(sent != len) {
                 ESP_LOGW(
