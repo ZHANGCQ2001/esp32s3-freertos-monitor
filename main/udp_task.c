@@ -19,6 +19,9 @@ static const char *TAG = "udp_task";
 static void udp_task(void *arg)
 {
     QueueHandle_t queue = (QueueHandle_t)arg;
+    uint32_t sent_count = 0;
+    uint32_t send_fail_count = 0;
+    uint32_t wifi_drop_count = 0;
 
     // 创建socket
     int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
@@ -74,6 +77,7 @@ static void udp_task(void *arg)
             portMAX_DELAY
         ) == pdTRUE) {
             if(!wifi_sta_is_connected()) {
+                wifi_drop_count++;
                 continue;
             }
             char payload[128];
@@ -106,20 +110,31 @@ static void udp_task(void *arg)
                 sizeof(dest_addr)
             );
             if(sent < 0) {
+                int err = errno;
+                send_fail_count++;
                 ESP_LOGW(
                     TAG,
                     "UDP send failed: errno=%d(%s)", 
-                    errno,
-                    strerror(errno)
+                    err,
+                    strerror(err)
                 );
                 continue;
             }
+            sent_count++;
             if(sent != len) {
                 ESP_LOGW(
                     TAG,
                     "UDP send length mismatch: expected=%d sent=%d",
                     len,
                     (int)sent
+                );
+            }
+
+            if(processed_sample.sample.sequence % 100 == 0) {
+                ESP_LOGI(
+                    "UDP stats",
+                    "sent=%" PRIu32 " wifi_drop=%" PRIu32 " send_fail=%" PRIu32 "", 
+                    sent_count, wifi_drop_count, send_fail_count
                 );
             }
         }
