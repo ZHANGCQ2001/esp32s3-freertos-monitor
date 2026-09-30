@@ -173,7 +173,7 @@ static udp_sample_result_t udp_send_sample(
         payload,
         len,
         0,
-        (struct sockaddr *)dest_addr,
+        (const struct sockaddr *)dest_addr,
         sizeof(*dest_addr)
     );
     if(sent < 0) {

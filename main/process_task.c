@@ -33,16 +33,16 @@ static void process_task(void *arg)
             );
             processed_sample.norm_g = norm;
             processed_sample.sample = sample;
-            ESP_LOGI(
-                TAG,
-                "X=%.3f Y=%.3f Z=%.3f |a|=%.3f g seq=%" PRIu32 " ts=%" PRId64 " us",
-                sample.accel.x_g,
-                sample.accel.y_g,
-                sample.accel.z_g,
-                norm,
-                sample.sequence,
-                sample.timestamp_us
-            );
+            // ESP_LOGI(
+            //     TAG,
+            //     "X=%.3f Y=%.3f Z=%.3f |a|=%.3f g seq=%" PRIu32 " ts=%" PRId64 " us",
+            //     sample.accel.x_g,
+            //     sample.accel.y_g,
+            //     sample.accel.z_g,
+            //     norm,
+            //     sample.sequence,
+            //     sample.timestamp_us
+            // );
             if (xQueueSend(output_queue, &processed_sample, 0) != pdTRUE) {
                 ESP_LOGW(TAG, "Output queue full, processed sample dropped");
             }

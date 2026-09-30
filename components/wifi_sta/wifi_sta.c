@@ -10,7 +10,6 @@
 #include "freertos/event_groups.h"
 
 #define WIFI_CONNECTED_BIT BIT0
-#define WIFI_FAILED_BIT    BIT1
 
 static const char *TAG = "wifi_sta";
 static const int MAX_RETRY = 15;
@@ -40,10 +39,13 @@ static void wifi_event_handler(
         event_id == WIFI_EVENT_STA_DISCONNECTED) {
         wifi_event_sta_disconnected_t *event =
             (wifi_event_sta_disconnected_t *)event_data;
+
+        retry_count++;
         ESP_LOGW(
             TAG,
-            "Wi-Fi disconnected, reason=%d, retrying %d / %d...",
-            event->reason, ++retry_count, MAX_RETRY
+            "WiFi disconnected, reason=%d, retry_count=%d",
+            event->reason,
+            retry_count
         );
 
         xEventGroupClearBits(
@@ -51,14 +53,8 @@ static void wifi_event_handler(
             WIFI_CONNECTED_BIT
         );
 
-        if (retry_count < MAX_RETRY) {
-            esp_wifi_connect();
-        } else {
-            xEventGroupSetBits(
-                wifi_event_group,
-                WIFI_FAILED_BIT
-            );
-        }
+        esp_wifi_connect();
+
     } else if (event_base == IP_EVENT &&
                event_id == IP_EVENT_STA_GOT_IP) {
         ip_event_got_ip_t *event =
@@ -69,10 +65,7 @@ static void wifi_event_handler(
             "Got IP: " IPSTR,
             IP2STR(&event->ip_info.ip)
         );
-        xEventGroupClearBits(
-            wifi_event_group,
-            WIFI_FAILED_BIT
-        );
+
         xEventGroupSetBits(
             wifi_event_group,
             WIFI_CONNECTED_BIT
@@ -207,17 +200,13 @@ esp_err_t wifi_sta_wait_connected(TickType_t timeout)
     }
     EventBits_t bits = xEventGroupWaitBits(
         wifi_event_group,                         // 等哪个 Event Group
-        WIFI_CONNECTED_BIT | WIFI_FAILED_BIT,     // 等哪些状态
+        WIFI_CONNECTED_BIT,     // 等哪些状态
         pdFALSE,                                  // 返回后不要清 bit
         pdFALSE,                                  // 不要求全部满足，任意一个即可
         timeout                                   // 最多等多久
     );
     if (bits & WIFI_CONNECTED_BIT) {
         return ESP_OK;
-    }
-
-    if (bits & WIFI_FAILED_BIT) {
-        return ESP_FAIL;
     }
 
     return ESP_ERR_TIMEOUT;
