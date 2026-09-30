@@ -1,11 +1,15 @@
 #include "control_task.h"
 #include "esp_log.h"
+#include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "freertos/task.h"
-#include "freertos/FreeRTOS.h"
 #include "driver/gpio.h"
 #include "driver/uart.h"
 #include "esp_timer.h"
+#include "esp_check.h"
+
+#include <stdbool.h>
+#include <string.h>
 
 static const char *TAG = "control_task";
 // DNESP32S3 onboard red LED: GPIO1, active low.
