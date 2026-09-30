@@ -97,7 +97,7 @@ static void udp_task(void *arg)
                 ESP_LOGW(TAG, "UDP payload truncated");
                 continue;
             }
-            sendto(
+            ssize_t sent = sendto(
                 sock,
                 payload,
                 len,
@@ -105,6 +105,22 @@ static void udp_task(void *arg)
                 (struct sockaddr *)&dest_addr,
                 sizeof(dest_addr)
             );
+            if(sent < 0) {
+                ESP_LOGW(
+                    TAG,
+                    "UDP send failed: errno=%d(%s)", 
+                    errno,
+                    strerror(errno)
+                );
+            }
+            if(sent != len) {
+                ESP_LOGW(
+                    TAG,
+                    "UDP send length mismatch: expected=%d sent=%d",
+                    len,
+                    (int)sent
+                );
+            }
         }
     }
 }
