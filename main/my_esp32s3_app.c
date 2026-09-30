@@ -13,6 +13,7 @@
 #include "control_task.h"
 
 static const char *TAG = "app_main";
+static process_task_context_t process_context;
 
 void app_main(void)
 {
@@ -39,10 +40,8 @@ void app_main(void)
         return;
     }
 
-    process_task_context_t process_context = {
-        .input_queue = sensor_queue,
-        .output_queue = processed_queue
-    };
+    process_context.input_queue = sensor_queue;
+    process_context.output_queue = processed_queue;
 
     // 先创建compinents，之后的任务需要
     ESP_ERROR_CHECK(wifi_sta_start());
