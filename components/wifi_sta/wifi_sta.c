@@ -12,7 +12,6 @@
 #define WIFI_CONNECTED_BIT BIT0
 
 static const char *TAG = "wifi_sta";
-static const int MAX_RETRY = 15;
 static int retry_count = 0;
 static EventGroupHandle_t wifi_event_group;
 static void wifi_event_handler(
