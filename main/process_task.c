@@ -4,10 +4,13 @@
 #include "freertos/task.h"
 #include "sensor_data.h"
 #include "esp_cpu.h"
+#include "esp_check.h"
 
 /*标准库*/
 #include <math.h>
 #include <inttypes.h>
+#include <stdbool.h>
+#include <string.h>
 
 static const char *TAG = "process_task";
 

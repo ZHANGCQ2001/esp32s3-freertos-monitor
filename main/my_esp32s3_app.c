@@ -1,12 +1,9 @@
 /*私有库*/
-#include "driver/gpio.h"
 #include "esp_check.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "freertos/task.h"
-#include "esp_timer.h"
-#include "driver/uart.h"
 #include "qma6100p.h"
 #include "sensor_task.h"
 #include "process_task.h"
@@ -14,10 +11,6 @@
 #include "udp_task.h"
 #include "wifi_sta.h"
 #include "control_task.h"
-
-/*标准库*/
-#include <string.h>
-#include <stdbool.h>
 
 static const char *TAG = "app_main";
 

@@ -91,8 +91,6 @@ static void control_task(void *arg)
     int64_t current_time = 0;
     uart_port_t uart_num  = UART_NUM_0;
     bool LED_STATE = false;
-    ESP_ERROR_CHECK(board_gpio_init());
-    ESP_ERROR_CHECK(board_uart_init(uart_num, 115200));
     while(1) {
         int btn_state = board_btn_get();
         switch(buttonstate) {
@@ -157,6 +155,17 @@ static void control_task(void *arg)
 
 esp_err_t control_task_start(void) 
 {
+    ESP_RETURN_ON_ERROR(
+        board_gpio_init(),
+        TAG,
+        "Failed to initialize GPIO"
+    );
+
+    ESP_RETURN_ON_ERROR(
+        board_uart_init(UART_NUM_0, 115200),
+        TAG,
+        "Failed to initialize UART"
+    );
     // 创建任务
     BaseType_t ret = xTaskCreate(
         control_task,
