@@ -116,8 +116,16 @@ static void udp_task(void *arg)
             if(total_count % 100 == 0) {
                 ESP_LOGI(
                     "UDP stats",
-                    "sent=%" PRIu32 " wifi_drop=%" PRIu32 " send_fail=%" PRIu32 "", 
-                    sent_count, wifi_drop_count, send_fail_count
+                    "total=%" PRIu32
+                    " sent=%" PRIu32
+                    " wifi_drop=%" PRIu32
+                    " send_fail=%" PRIu32
+                    " format_fail=%" PRIu32,
+                    total_count,
+                    sent_count,
+                    wifi_drop_count,
+                    send_fail_count,
+                    format_fail_count
                 );
             }
         }
@@ -159,7 +167,7 @@ static udp_sample_result_t udp_send_sample(
         payload,
         len,
         0,
-        (struct sockaddr *)&dest_addr,
+        (struct sockaddr *)dest_addr,
         sizeof(dest_addr)
     );
     if(sent < 0) {
@@ -179,6 +187,7 @@ static udp_sample_result_t udp_send_sample(
             len,
             (int)sent
         );
+        return UDP_SAMPLE_SEND_FAIL;
     }
 
     return UDP_SAMPLE_SENT;
