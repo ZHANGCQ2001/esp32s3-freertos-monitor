@@ -168,7 +168,7 @@ static udp_sample_result_t udp_send_sample(
         len,
         0,
         (struct sockaddr *)dest_addr,
-        sizeof(dest_addr)
+        sizeof(*dest_addr)
     );
     if(sent < 0) {
         int err = errno;
