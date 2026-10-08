@@ -13,7 +13,6 @@
 #include "control_task.h"
 
 static const char *TAG = "app_main";
-static process_task_context_t process_context;
 
 void app_main(void)
 {
@@ -40,6 +39,7 @@ void app_main(void)
         return;
     }
 
+    static process_task_context_t process_context;
     process_context.input_queue = sensor_queue;
     process_context.output_queue = processed_queue;
 
