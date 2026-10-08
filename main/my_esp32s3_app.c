@@ -51,10 +51,4 @@ void app_main(void)
     ESP_ERROR_CHECK(process_task_start(&process_context));
     ESP_ERROR_CHECK(sensor_task_start(sensor_queue));
     ESP_ERROR_CHECK(control_task_start());
-    
-    
-    
-    while(1) {
-        vTaskDelay(pdMS_TO_TICKS(1000));
-    }
 }

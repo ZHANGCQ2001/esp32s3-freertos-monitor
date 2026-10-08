@@ -9,7 +9,6 @@
 #include <math.h>
 #include <inttypes.h>
 
-
 static const char *TAG = "process_task";
 
 static void process_task(void *arg)
