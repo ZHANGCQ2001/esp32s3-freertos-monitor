@@ -137,21 +137,25 @@ static void control_task(void *arg)
     uart_port_t uart_num  = UART_NUM_0;
     bool LED_STATE = false;
 
+    int stable_btn_state = board_btn_get();
+
     while(1) {
 
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
-        int new_btn_state = board_btn_get();
         vTaskDelay(pdMS_TO_TICKS(DEBOUNCE_TIME));
-        int stable_btn_state = board_btn_get();
+        int new_btn_state = board_btn_get();
 
-        if(new_btn_state == 1 && stable_btn_state == 0) {
-            buttonstate = STATE_PRESS_DEBOUNCE;
-            ESP_LOGI(TAG, "button stable , level=%d", stable_btn_state);
-        } else if(new_btn_state == 0 && stable_btn_state == 1) {
-            buttonstate = STATE_RELEASE_DEBOUNCE;
-            ESP_LOGI(TAG, "button stable , level=%d", stable_btn_state);
-        } else {
+        if(new_btn_state != stable_btn_state) {
+            if(new_btn_state == 1 && stable_btn_state == 0) {
+                stable_btn_state = new_btn_state;
+                ESP_LOGI(TAG, "button stable , level=%d", stable_btn_state);
+            } else if(new_btn_state == 0 && stable_btn_state == 1) {
+                stable_btn_state = new_btn_state;
+                ESP_LOGI(TAG, "button stable , level=%d", stable_btn_state);
+            }
+        }
+         else {
             buttonstate = STATE_IDLE;
         }
     }
