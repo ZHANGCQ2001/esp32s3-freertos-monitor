@@ -47,7 +47,7 @@ static esp_err_t board_gpio_init(void)
         .mode = GPIO_MODE_OUTPUT,
         .pull_up_en = GPIO_PULLUP_DISABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type = GPIO_INTR_ANYEDGE,
+        .intr_type = GPIO_INTR_DISABLE,
     };
 
     ESP_RETURN_ON_ERROR(gpio_config(&led_config), TAG, "Failed to configure LED GPIO");
@@ -95,19 +95,39 @@ static esp_err_t board_uart_init(uart_port_t uart_num, int baudrate) {
 
 static void button_gpio_isr_handler(void *arg)
 {
+    (void)arg;
+
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-    portYIELD_FROM_ISR();
+
+    vTaskNotifyGiveFromISR(
+        control_task_handle,
+        &xHigherPriorityTaskWoken
+    );
+
+    if (xHigherPriorityTaskWoken == pdTRUE) {
+        portYIELD_FROM_ISR();
+    }
 }
 
 static esp_err_t board_button_isr_init(void)
 {
-    gpio_install_isr_service(BOARD_BTN_GPIO);
-
-    gpio_isr_handler_add(
-        BOARD_BTN_GPIO,
-        button_gpio_isr_handler,
-        NULL
+    ESP_RETURN_ON_ERROR(
+        gpio_install_isr_service(0),
+        TAG,
+        "Failed to install GPIO ISR service"
     );
+
+    ESP_RETURN_ON_ERROR(
+        gpio_isr_handler_add(
+            BOARD_BTN_GPIO,
+            button_gpio_isr_handler,
+            NULL
+        ),
+        TAG,
+        "Failed to add button ISR handler"
+    );
+
+    return ESP_OK;
 }
 
 static void control_task(void *arg) 
@@ -116,7 +136,7 @@ static void control_task(void *arg)
     int64_t current_time = 0;
     uart_port_t uart_num  = UART_NUM_0;
     bool LED_STATE = false;
-    button_gpio_isr_handler();
+
     while(1) {
         int btn_state = board_btn_get();
         switch(buttonstate) {
@@ -206,7 +226,11 @@ esp_err_t control_task_start(void)
         return ESP_ERR_NO_MEM;
     }
 
-    board_button_isr_init();
+    ESP_RETURN_ON_ERROR(
+        board_button_isr_init(),
+        TAG,
+        "Failed to initialize button ISR"
+    );
 
     return ESP_OK;
 }
