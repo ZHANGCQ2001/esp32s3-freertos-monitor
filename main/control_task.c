@@ -7,6 +7,7 @@
 #include "driver/uart.h"
 #include "esp_timer.h"
 #include "esp_check.h"
+#include "system_events.h"
 
 #include <stdbool.h>
 #include <string.h>
@@ -129,7 +130,7 @@ static void control_task(void *arg)
     bool led_state = 0;
 
     int stable_btn_state = board_btn_get();
-
+    EventGroupHandle_t event_group = (EventGroupHandle_t)arg;
     while(1) {
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
@@ -144,32 +145,51 @@ static void control_task(void *arg)
         if (stable_btn_state == 0) {
             // 确认按下
         } else {
+            // 确认释放
             led_state = !led_state;
-
             ESP_ERROR_CHECK(board_led_set(led_state));
 
             const char *message =
                 led_state ? "LED ON\r\n" : "LED OFF\r\n";
 
             size_t message_len = strlen(message);
-
             int written = uart_write_bytes(
                 uart_num,
                 message,
                 message_len
             );
-
             if (written < 0) {
                 ESP_LOGE(TAG, "Failed to send UART data");
             } else if ((size_t)written != message_len) {
                 ESP_LOGW(TAG, "Only sent %d bytes", written);
             }
+
+            EventBits_t bits = xEventGroupGetBits(event_group);
+            if (bits & SYS_RUN_BIT) {
+                // 当前 RUN
+                // 清掉 SYS_RUN_BIT → PAUSE
+                xEventGroupClearBits(
+                    event_group,
+                    SYS_RUN_BIT
+                );
+
+                ESP_LOGI("System state:", "RUN");
+            } else {
+                // 当前 PAUSE
+                // 设置 SYS_RUN_BIT → RUN
+                xEventGroupClearBits(
+                    event_group,
+                    SYS_RUN_BIT
+                );
+                ESP_LOGI("System state:", "PAUSE");
+            }
         }
     }
 }
 
-esp_err_t control_task_start(void) 
+esp_err_t control_task_start(void *arg) 
 {
+    EventGroupHandle_t event_group = (EventGroupHandle_t)arg;
     ESP_RETURN_ON_ERROR(
         board_gpio_init(),
         TAG,
@@ -186,7 +206,7 @@ esp_err_t control_task_start(void)
         control_task,
         "control_task",
         4096,
-        NULL,
+        event_group,
         4,
         &control_task_handle
     );

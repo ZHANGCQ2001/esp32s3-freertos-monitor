@@ -2,4 +2,4 @@
 
 #include "esp_err.h"
 
-esp_err_t control_task_start(void);
+esp_err_t control_task_start(void *arg);

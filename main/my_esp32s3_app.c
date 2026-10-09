@@ -11,6 +11,7 @@
 #include "udp_task.h"
 #include "wifi_sta.h"
 #include "control_task.h"
+#include "system_events.h"
 
 static const char *TAG = "app_main";
 
@@ -39,6 +40,17 @@ void app_main(void)
         return;
     }
 
+    // 创建eventgroup，按键控制多个task启停
+    EventGroupHandle_t system_event_group = xEventGroupCreate();
+    if (system_event_group == NULL) {
+        ESP_LOGE(TAG, "Failed to create event group");
+        return;
+    }
+    xEventGroupSetBits(
+        system_event_group,
+        SYS_RUN_BIT
+    );
+
     static process_task_context_t process_context;
     process_context.input_queue = sensor_queue;
     process_context.output_queue = processed_queue;
@@ -50,5 +62,5 @@ void app_main(void)
     ESP_ERROR_CHECK(udp_task_start(processed_queue));
     ESP_ERROR_CHECK(process_task_start(&process_context));
     ESP_ERROR_CHECK(sensor_task_start(sensor_queue));
-    ESP_ERROR_CHECK(control_task_start());
+    ESP_ERROR_CHECK(control_task_start(system_event_group));
 }
