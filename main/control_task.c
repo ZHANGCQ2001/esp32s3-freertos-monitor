@@ -37,6 +37,7 @@ static int board_btn_get(void);
 static esp_err_t board_uart_init(uart_port_t uart_num, int baudrate);
 static void control_task(void *arg);
 static void button_gpio_isr_handler(void *arg);
+static esp_err_t board_button_isr_init(void);
 
 
 static esp_err_t board_gpio_init(void)
@@ -59,7 +60,7 @@ static esp_err_t board_gpio_init(void)
         .mode = GPIO_MODE_INPUT,
         .pull_up_en = GPIO_PULLUP_ENABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type = GPIO_INTR_DISABLE,
+        .intr_type = GPIO_INTR_ANYEDGE,
     };
 
     ESP_RETURN_ON_ERROR(gpio_config(&btn_config), TAG, "Failed to configure BTN GPIO");
@@ -94,7 +95,19 @@ static esp_err_t board_uart_init(uart_port_t uart_num, int baudrate) {
 
 static void button_gpio_isr_handler(void *arg)
 {
-    
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    portYIELD_FROM_ISR();
+}
+
+static esp_err_t board_button_isr_init(void)
+{
+    gpio_install_isr_service(BOARD_BTN_GPIO);
+
+    gpio_isr_handler_add(
+        BOARD_BTN_GPIO,
+        button_gpio_isr_handler,
+        NULL
+    );
 }
 
 static void control_task(void *arg) 
@@ -186,12 +199,14 @@ esp_err_t control_task_start(void)
         4096,
         NULL,
         4,
-        control_task_handle
+        &control_task_handle
     );
 
     if(ret != pdPASS) {
         return ESP_ERR_NO_MEM;
     }
+
+    board_button_isr_init();
 
     return ESP_OK;
 }
