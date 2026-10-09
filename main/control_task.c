@@ -126,7 +126,6 @@ static esp_err_t board_button_isr_init(void)
 static void control_task(void *arg) 
 {
     uart_port_t uart_num  = UART_NUM_0;
-    bool LED_STATE = false;
     bool led_state = 0;
 
     int stable_btn_state = board_btn_get();
@@ -173,15 +172,15 @@ static void control_task(void *arg)
                     SYS_RUN_BIT
                 );
 
-                ESP_LOGI("System state:", "RUN");
+                ESP_LOGI(TAG, "System state: PAUSE");
             } else {
                 // 当前 PAUSE
                 // 设置 SYS_RUN_BIT → RUN
-                xEventGroupClearBits(
+                xEventGroupSetBits(
                     event_group,
                     SYS_RUN_BIT
                 );
-                ESP_LOGI("System state:", "PAUSE");
+                ESP_LOGI(TAG, "System state: RUN");
             }
         }
     }
