@@ -19,7 +19,7 @@ static const gpio_num_t BOARD_UART_TX_GPIO = GPIO_NUM_43;
 static const gpio_num_t BOARD_UART_RX_GPIO = GPIO_NUM_44;
 static const uint32_t BOARD_LED_ON_LEVEL = 0;
 static const uint32_t BOARD_LED_OFF_LEVEL = 1;
-// static const uint32_t DEBOUNCE_TIME = 20;
+static const uint32_t DEBOUNCE_TIME = 20;
 
 static TaskHandle_t control_task_handle = NULL;
 
@@ -141,9 +141,19 @@ static void control_task(void *arg)
 
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
-        int btn_state = board_btn_get();
+        int new_btn_state = board_btn_get();
+        vTaskDelay(pdMS_TO_TICKS(DEBOUNCE_TIME));
+        int stable_btn_state = board_btn_get();
 
-        ESP_LOGI(TAG, "button interrupt, level=%d", btn_state);
+        if(new_btn_state == 1 && stable_btn_state == 0) {
+            buttonstate = STATE_PRESS_DEBOUNCE;
+            ESP_LOGI(TAG, "button stable , level=%d", stable_btn_state);
+        } else if(new_btn_state == 0 && stable_btn_state == 1) {
+            buttonstate = STATE_RELEASE_DEBOUNCE;
+            ESP_LOGI(TAG, "button stable , level=%d", stable_btn_state);
+        } else {
+            buttonstate = STATE_IDLE;
+        }
     }
 }
 
