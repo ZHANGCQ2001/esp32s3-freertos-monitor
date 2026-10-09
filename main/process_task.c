@@ -1,4 +1,6 @@
 /*私有库*/
+#include "freertos/FreeRTOS.h"
+#include "freertos/queue.h"
 #include "process_task.h"
 #include "esp_log.h"
 #include "freertos/task.h"

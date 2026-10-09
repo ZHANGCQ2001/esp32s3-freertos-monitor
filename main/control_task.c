@@ -21,6 +21,8 @@ static const uint32_t BOARD_LED_ON_LEVEL = 0;
 static const uint32_t BOARD_LED_OFF_LEVEL = 1;
 static const uint32_t DEBOUNCE_TIME = 20;
 
+static TaskHandle_t control_task_handle = NULL;
+
 typedef enum {
     STATE_IDLE = 0,
     STATE_PRESS_DEBOUNCE,
@@ -34,6 +36,7 @@ static esp_err_t board_led_set(bool on);
 static int board_btn_get(void);
 static esp_err_t board_uart_init(uart_port_t uart_num, int baudrate);
 static void control_task(void *arg);
+static void button_gpio_isr_handler(void *arg);
 
 
 static esp_err_t board_gpio_init(void)
@@ -43,7 +46,7 @@ static esp_err_t board_gpio_init(void)
         .mode = GPIO_MODE_OUTPUT,
         .pull_up_en = GPIO_PULLUP_DISABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type = GPIO_INTR_DISABLE,
+        .intr_type = GPIO_INTR_ANYEDGE,
     };
 
     ESP_RETURN_ON_ERROR(gpio_config(&led_config), TAG, "Failed to configure LED GPIO");
@@ -89,12 +92,18 @@ static esp_err_t board_uart_init(uart_port_t uart_num, int baudrate) {
     return ESP_OK;
 }
 
+static void button_gpio_isr_handler(void *arg)
+{
+    
+}
+
 static void control_task(void *arg) 
 {
     ButtonState buttonstate = STATE_IDLE;
     int64_t current_time = 0;
     uart_port_t uart_num  = UART_NUM_0;
     bool LED_STATE = false;
+    button_gpio_isr_handler();
     while(1) {
         int btn_state = board_btn_get();
         switch(buttonstate) {
@@ -177,7 +186,7 @@ esp_err_t control_task_start(void)
         4096,
         NULL,
         4,
-        NULL
+        control_task_handle
     );
 
     if(ret != pdPASS) {
