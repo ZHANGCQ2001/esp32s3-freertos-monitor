@@ -55,12 +55,16 @@ void app_main(void)
     process_context.input_queue = sensor_queue;
     process_context.output_queue = processed_queue;
 
+    static sensor_task_context_t sensor_context;
+    sensor_context.queue = sensor_queue;
+    sensor_context.event_group = system_event_group;
+
     // 先创建compinents，之后的任务需要
     ESP_ERROR_CHECK(wifi_sta_start());
 
     // 从流水线末端开始创建任务，使消费者先阻塞等待数据
     ESP_ERROR_CHECK(udp_task_start(processed_queue));
     ESP_ERROR_CHECK(process_task_start(&process_context));
-    ESP_ERROR_CHECK(sensor_task_start(sensor_queue));
+    ESP_ERROR_CHECK(sensor_task_start(&sensor_context));
     ESP_ERROR_CHECK(control_task_start(system_event_group));
 }

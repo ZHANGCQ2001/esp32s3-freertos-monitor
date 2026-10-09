@@ -6,7 +6,7 @@
 #include "esp_cpu.h"
 #include "esp_timer.h"
 #include "freertos/task.h"
-
+#include "system_events.h"
 /*标准库*/
 
 
@@ -14,7 +14,9 @@ static const char *TAG = "sensor_task";
 static void sensor_task(void *arg)
 {
     vTaskDelay(pdMS_TO_TICKS(100));
-    QueueHandle_t queue = (QueueHandle_t)arg;
+    sensor_task_context_t *context_p = (sensor_task_context_t *) arg;
+    QueueHandle_t queue = context_p->queue;
+    EventGroupHandle_t event_group = context_p->event_group;
     
     const TickType_t sample_period = pdMS_TO_TICKS(100);
     TickType_t last_wake_time = xTaskGetTickCount();
@@ -22,6 +24,16 @@ static void sensor_task(void *arg)
     uint32_t sequence = 0;
 
     while (1) {
+
+        //暂停控制
+        xEventGroupWaitBits(
+            event_group,
+            SYS_RUN_BIT,
+            pdFALSE,
+            pdTRUE,
+            portMAX_DELAY
+        );
+
         sensor_sample_t sample;
         sample.timestamp_us = esp_timer_get_time();
         esp_err_t ret = qma6100p_read_accel_g(&sample.accel);
