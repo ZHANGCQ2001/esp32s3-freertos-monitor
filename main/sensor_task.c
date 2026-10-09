@@ -22,8 +22,13 @@ static void sensor_task(void *arg)
     TickType_t last_wake_time = xTaskGetTickCount();
 
     uint32_t sequence = 0;
+    bool was_paused = false;
 
     while (1) {
+        EventBits_t bits = xEventGroupGetBits(event_group);
+        if ((bits & SYS_RUN_BIT) == 0) {
+            was_paused = true;
+        }
 
         //暂停控制
         xEventGroupWaitBits(
@@ -33,6 +38,11 @@ static void sensor_task(void *arg)
             pdTRUE,
             portMAX_DELAY
         );
+
+        if (was_paused) {
+            last_wake_time = xTaskGetTickCount();
+            was_paused = false;
+        }
 
         sensor_sample_t sample;
         sample.timestamp_us = esp_timer_get_time();
@@ -51,6 +61,10 @@ static void sensor_task(void *arg)
         }
 
         sequence++;
+        if (sequence % 10 == 0) {
+            ESP_LOGI(TAG, "sample sequence=%lu",
+                    (unsigned long)sequence);
+        }
 
         vTaskDelayUntil(
             &last_wake_time,
