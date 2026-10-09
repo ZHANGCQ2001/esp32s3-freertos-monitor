@@ -59,13 +59,13 @@ static void sensor_task(void *arg)
     }
 }
 
-esp_err_t sensor_task_start(QueueHandle_t queue)
+esp_err_t sensor_task_start(sensor_task_context_t *context_p)
 {
     BaseType_t ret = xTaskCreate( // 任务函数、任务名、栈大小、传递参数、优先级、Task Handle 输出
         sensor_task,
         "sensor_task",
         4096,
-        queue,
+        context_p,
         5,
         NULL
     );
