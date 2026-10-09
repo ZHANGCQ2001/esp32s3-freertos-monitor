@@ -23,14 +23,6 @@ static const uint32_t DEBOUNCE_TIME = 20;
 
 static TaskHandle_t control_task_handle = NULL;
 
-typedef enum {
-    STATE_IDLE = 0,
-    STATE_PRESS_DEBOUNCE,
-    STATE_PRESSED,
-    STATE_RELEASE_DEBOUNCE
-} ButtonState;
-
-
 static esp_err_t board_gpio_init(void);
 static esp_err_t board_led_set(bool on);
 static int board_btn_get(void);
@@ -132,39 +124,49 @@ static esp_err_t board_button_isr_init(void)
 
 static void control_task(void *arg) 
 {
-    ButtonState buttonstate = STATE_IDLE;
-    int64_t current_time = 0;
     uart_port_t uart_num  = UART_NUM_0;
     bool LED_STATE = false;
+    bool led_state = 0;
 
     int stable_btn_state = board_btn_get();
 
     while(1) {
-
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
         vTaskDelay(pdMS_TO_TICKS(DEBOUNCE_TIME));
         int new_btn_state = board_btn_get();
 
-        if(new_btn_state != stable_btn_state) {
-            if(new_btn_state == 1 && stable_btn_state == 0) {
-                stable_btn_state = new_btn_state;
-                ESP_LOGI(TAG, "button stable , level=%d", stable_btn_state);
-            } else if(new_btn_state == 0 && stable_btn_state == 1) {
-                stable_btn_state = new_btn_state;
-                ESP_LOGI(TAG, "button stable , level=%d", stable_btn_state);
-            }
+        if(new_btn_state == stable_btn_state) {
+            continue;
         }
-         else {
-            buttonstate = STATE_IDLE;
+        stable_btn_state = new_btn_state;
+
+        if (stable_btn_state == 0) {
+            // 确认按下
+        } else {
+            led_state = !led_state;
+
+            ESP_ERROR_CHECK(board_led_set(led_state));
+
+            const char *message =
+                led_state ? "LED ON\r\n" : "LED OFF\r\n";
+
+            size_t message_len = strlen(message);
+
+            int written = uart_write_bytes(
+                uart_num,
+                message,
+                message_len
+            );
+
+            if (written < 0) {
+                ESP_LOGE(TAG, "Failed to send UART data");
+            } else if ((size_t)written != message_len) {
+                ESP_LOGW(TAG, "Only sent %d bytes", written);
+            }
         }
     }
 }
-
-
-
-
-
 
 esp_err_t control_task_start(void) 
 {
