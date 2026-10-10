@@ -2,19 +2,28 @@
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/timers.h"
 
 #include <inttypes.h>
 
 static const char *TAG = "monitor_task";
+static TaskHandle_t monitor_task_handle = NULL;
+static TimerHandle_t monitor_timer = NULL;
+
+static void monitor_task(void *arg);
+static void monitor_timer_callback(TimerHandle_t timer);
 
 
 static void monitor_task(void *arg)
 {
-    system_stats_context_t *stats_context_p =
-        (system_stats_context_t *)arg;
+    system_stats_context_t *stats_context_p = (system_stats_context_t *)arg;
+    
 
     while (1) {
-        vTaskDelay(pdMS_TO_TICKS(2000));
+        ulTaskNotifyTake(
+            pdTRUE,
+            portMAX_DELAY
+        );
 
         system_stats_t snapshot;
 
@@ -49,9 +58,23 @@ static void monitor_task(void *arg)
     }
 }
 
+static void monitor_timer_callback(TimerHandle_t timer)
+{
+    (void)timer;
+
+    xTaskNotifyGive(monitor_task_handle);
+}
+
 
 esp_err_t monitor_task_start(system_stats_context_t *context_p)
 {
+    monitor_timer = xTimerCreate(
+        "monitor_timer",
+        pdMS_TO_TICKS(2000),
+        pdTRUE,
+        NULL,
+        monitor_timer_callback
+    );
     // 创建任务
     BaseType_t ret = xTaskCreate(
         monitor_task,
@@ -65,6 +88,11 @@ esp_err_t monitor_task_start(system_stats_context_t *context_p)
     if(ret != pdPASS) {
         return ESP_ERR_NO_MEM;
     }
+
+    xTimerStart(
+        monitor_timer,
+        0
+    );
 
     return ESP_OK;
 }
