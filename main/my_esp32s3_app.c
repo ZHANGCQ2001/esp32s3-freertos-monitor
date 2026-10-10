@@ -60,16 +60,19 @@ void app_main(void)
         return;
     }
 
+    static system_stats_context_t stats_context;
+    stats_context.mutex = stats_mutex;
+
     static process_task_context_t process_context;
     process_context.input_queue = sensor_queue;
     process_context.output_queue = processed_queue;
+    process_context.stats_context_p = &stats_mutex;
 
     static sensor_task_context_t sensor_context;
     sensor_context.queue = sensor_queue;
     sensor_context.event_group = system_event_group;
-
-    static system_stats_context_t stats_context;
-    stats_context.mutex = stats_mutex;
+    sensor_context.stats_context_p = &stats_mutex;
+    
 
     static udp_task_context_t udp_context;
     udp_context.queue = processed_queue;

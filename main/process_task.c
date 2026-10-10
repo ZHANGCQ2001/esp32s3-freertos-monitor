@@ -18,6 +18,7 @@ static void process_task(void *arg)
     process_task_context_t* context_p = (process_task_context_t*)arg;
     QueueHandle_t input_queue = context_p->input_queue;
     QueueHandle_t output_queue = context_p->output_queue;
+    system_stats_context_t *stats_context_p = context_p->stats_context_p;
     uint32_t processed_count  = 0;
     while(1) {
         sensor_sample_t sample;
@@ -38,6 +39,10 @@ static void process_task(void *arg)
             if (xQueueSend(output_queue, &processed_sample, 0) != pdTRUE) {
                 ESP_LOGW(TAG, "Output queue full, processed sample dropped");
             }
+
+            xSemaphoreTake(stats_context_p->mutex, portMAX_DELAY);
+            stats_context_p->stats.processed_samples = processed_count;
+            xSemaphoreGive(stats_context_p->mutex);
 
             if (processed_count  % 20 == 0) {
                 ESP_LOGI(

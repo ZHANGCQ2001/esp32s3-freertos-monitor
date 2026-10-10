@@ -10,6 +10,9 @@ typedef struct {
     uint32_t udp_wifi_drop;
     uint32_t udp_send_fail;
     uint32_t udp_format_fail;
+    uint32_t sensor_samples;
+    uint32_t processed_samples;
+    uint32_t process_dropped;
 } system_stats_t;
 
 typedef struct {

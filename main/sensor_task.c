@@ -17,6 +17,7 @@ static void sensor_task(void *arg)
     sensor_task_context_t *context_p = (sensor_task_context_t *) arg;
     QueueHandle_t queue = context_p->queue;
     EventGroupHandle_t event_group = context_p->event_group;
+    system_stats_context_t *stats_context_p = context_p->stats_context_p;
     
     const TickType_t sample_period = pdMS_TO_TICKS(100);
     TickType_t last_wake_time = xTaskGetTickCount();
@@ -61,10 +62,10 @@ static void sensor_task(void *arg)
         }
 
         sequence++;
-        if (sequence % 10 == 0) {
-            ESP_LOGI(TAG, "sample sequence=%lu",
-                    (unsigned long)sequence);
-        }
+        xSemaphoreTake(stats_context_p->mutex, portMAX_DELAY);
+        stats_context_p->stats.sensor_samples = sequence;
+        xSemaphoreGive(stats_context_p->mutex);
+
 
         vTaskDelayUntil(
             &last_wake_time,
