@@ -58,9 +58,7 @@ static void monitor_task(void *arg)
             snapshot.udp_format_fail
         );
 
-        if(snapshot.sensor_samples % 5 == 0) {
-            ESP_ERROR_CHECK(esp_task_wdt_reset());
-        }
+        ESP_ERROR_CHECK(esp_task_wdt_reset());
     }
 }
 
