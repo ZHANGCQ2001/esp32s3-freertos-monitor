@@ -18,8 +18,6 @@ static void monitor_timer_callback(TimerHandle_t timer);
 static void monitor_task(void *arg)
 {
     system_stats_context_t *stats_context_p = (system_stats_context_t *)arg;
-    // 注册当前task的看门狗
-    ESP_ERROR_CHECK(esp_task_wdt_add(NULL));
 
     while (1) {
         ulTaskNotifyTake(
@@ -108,6 +106,16 @@ esp_err_t monitor_task_start(system_stats_context_t *context_p)
         monitor_task_handle = NULL;
 
         return ESP_FAIL;
+    }
+
+    esp_err_t err = esp_task_wdt_add(monitor_task_handle);
+    if (err != ESP_OK) {
+        vTaskDelete(monitor_task_handle);
+        monitor_task_handle = NULL;
+
+        xTimerDelete(monitor_timer, portMAX_DELAY);
+        monitor_timer = NULL;
+        return err;
     }
 
     return ESP_OK;

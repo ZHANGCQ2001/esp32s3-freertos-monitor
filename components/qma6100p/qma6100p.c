@@ -6,6 +6,8 @@
 #include "esp_log.h"
 #include "esp_rom_sys.h"
 
+#include <stdbool.h>
+
 
 /* ==================== I2C 配置 ==================== */
 
@@ -93,30 +95,26 @@ static const char *TAG = "qma6100p";
 
 static i2c_master_bus_handle_t s_bus_handle = NULL;
 static i2c_master_dev_handle_t s_dev_handle = NULL;
+static i2c_master_bus_handle_t s_bus_handle = NULL;
+static i2c_master_dev_handle_t s_dev_handle = NULL;
+static bool s_initialized = false;
 
 
 static esp_err_t qma6100p_read_regs(
     uint8_t start_reg,
     uint8_t *data,
     size_t len);
-
 static esp_err_t qma6100p_write_reg(
     uint8_t reg,
     uint8_t value);
-
 static esp_err_t qma6100p_wait_otp_ready(void);
-
 static esp_err_t qma6100p_check_chip_status(void);
-
 static esp_err_t qma6100p_soft_reset(void);
-
 static esp_err_t qma6100p_post_reset_init(void);
-
 static esp_err_t qma6100p_set_range(void);
-
 static esp_err_t qma6100p_set_odr(void);
-
 static int16_t qma6100p_decode_axis(uint8_t lsb, uint8_t msb);
+static void qma6100p_cleanup(void)
 
 
 /* ==================== 内部辅助函数 ==================== */
@@ -144,7 +142,7 @@ static esp_err_t qma6100p_read_regs(
     uint8_t *data,
     size_t len)
 {
-    if (s_dev_handle == NULL) {
+    if (!s_initialized || s_dev_handle == NULL) {
         return ESP_ERR_INVALID_STATE;
     }
 
@@ -443,6 +441,39 @@ static int16_t qma6100p_decode_axis(uint8_t lsb, uint8_t msb)
     return value >> 2;
 }
 
+static void qma6100p_cleanup(void)
+{
+    if (s_dev_handle != NULL) {
+        esp_err_t ret = i2c_master_bus_rm_device(s_dev_handle);
+
+        if (ret != ESP_OK) {
+            ESP_LOGW(
+                TAG,
+                "Failed to remove QMA6100P device: %s",
+                esp_err_to_name(ret)
+            );
+        } else {
+            s_dev_handle = NULL;
+        }
+    }
+
+    if (s_bus_handle != NULL) {
+        esp_err_t ret = i2c_del_master_bus(s_bus_handle);
+
+        if (ret != ESP_OK) {
+            ESP_LOGW(
+                TAG,
+                "Failed to delete I2C master bus: %s",
+                esp_err_to_name(ret)
+            );
+        } else {
+            s_bus_handle = NULL;
+        }
+    }
+
+    s_initialized = false;
+}
+
 
 /* ==================== 对外 API ==================== */
 /*
@@ -457,9 +488,11 @@ static int16_t qma6100p_decode_axis(uint8_t lsb, uint8_t msb)
  */
 esp_err_t qma6100p_init(void)
 {
-    if (s_dev_handle != NULL) {
+    if (s_initialized) {
         return ESP_OK;
     }
+
+    esp_err_t ret;
 
     const i2c_master_bus_config_t bus_config = {
         .clk_source = I2C_CLK_SRC_DEFAULT,
@@ -470,14 +503,19 @@ esp_err_t qma6100p_init(void)
         .flags.enable_internal_pullup = true,
     };
 
-    ESP_RETURN_ON_ERROR(
-        i2c_new_master_bus(
-            &bus_config,
-            &s_bus_handle
-        ),
-        TAG,
-        "Failed to create I2C master bus"
+    ret = i2c_new_master_bus(
+        &bus_config,
+        &s_bus_handle
     );
+
+    if (ret != ESP_OK) {
+        ESP_LOGE(
+            TAG,
+            "Failed to create I2C master bus: %s",
+            esp_err_to_name(ret)
+        );
+        goto fail;
+    }
 
     const i2c_device_config_t dev_config = {
         .dev_addr_length = I2C_ADDR_BIT_LEN_7,
@@ -485,15 +523,20 @@ esp_err_t qma6100p_init(void)
         .scl_speed_hz = QMA6100P_I2C_FREQ_HZ,
     };
 
-    ESP_RETURN_ON_ERROR(
-        i2c_master_bus_add_device(
-            s_bus_handle,
-            &dev_config,
-            &s_dev_handle
-        ),
-        TAG,
-        "Failed to add QMA6100P device"
+    ret = i2c_master_bus_add_device(
+        s_bus_handle,
+        &dev_config,
+        &s_dev_handle
     );
+
+    if (ret != ESP_OK) {
+        ESP_LOGE(
+            TAG,
+            "Failed to add QMA6100P device: %s",
+            esp_err_to_name(ret)
+        );
+        goto fail;
+    }
 
     ESP_LOGI(
         TAG,
@@ -503,33 +546,58 @@ esp_err_t qma6100p_init(void)
         QMA6100P_I2C_ADDRESS
     );
 
-    ESP_RETURN_ON_ERROR(
-        qma6100p_soft_reset(),
-        TAG,
-        "QMA6100P software reset failed"
-    );
+    ret = qma6100p_soft_reset();
+    if (ret != ESP_OK) {
+        ESP_LOGE(
+            TAG,
+            "QMA6100P software reset failed: %s",
+            esp_err_to_name(ret)
+        );
+        goto fail;
+    }
 
-    ESP_RETURN_ON_ERROR(
-        qma6100p_post_reset_init(),
-        TAG,
-        "QMA6100P software post_reset_init failed"
-    );
+    ret = qma6100p_post_reset_init();
+    if (ret != ESP_OK) {
+        ESP_LOGE(
+            TAG,
+            "QMA6100P post reset init failed: %s",
+            esp_err_to_name(ret)
+        );
+        goto fail;
+    }
 
-    ESP_RETURN_ON_ERROR(
-        qma6100p_set_range(),
-        TAG,
-        "QMA6100P set range failed"
-    );
+    ret = qma6100p_set_range();
+    if (ret != ESP_OK) {
+        ESP_LOGE(
+            TAG,
+            "QMA6100P set range failed: %s",
+            esp_err_to_name(ret)
+        );
+        goto fail;
+    }
 
-    ESP_RETURN_ON_ERROR(
-        qma6100p_set_odr(),
-        TAG,
-        "QMA6100P set odr failed"
-    );
+    ret = qma6100p_set_odr();
+    if (ret != ESP_OK) {
+        ESP_LOGE(
+            TAG,
+            "QMA6100P set ODR failed: %s",
+            esp_err_to_name(ret)
+        );
+        goto fail;
+    }
 
-    ESP_LOGI(TAG, "QMA6100P basic initialization complete");
+    s_initialized = true;
+
+    ESP_LOGI(
+        TAG,
+        "QMA6100P basic initialization complete"
+    );
 
     return ESP_OK;
+
+fail:
+    qma6100p_cleanup();
+    return ret;
 }
 
 /*
