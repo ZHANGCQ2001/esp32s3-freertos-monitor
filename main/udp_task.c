@@ -101,7 +101,6 @@ static void udp_task(void *arg)
             );
 
             system_stats_t stats_snapshot;
-            bool should_log = false;
 
             xSemaphoreTake(stats_context_p->mutex, portMAX_DELAY);
 
@@ -128,26 +127,7 @@ static void udp_task(void *arg)
                     break;
             }
 
-            if (stats_context_p->stats.udp_total % 100 == 0) {
-                stats_snapshot = stats_context_p->stats;
-                should_log = true;
-            }
-
             xSemaphoreGive(stats_context_p->mutex);
-            
-            if(should_log) {
-                ESP_LOGI(TAG,
-                    "total=%" PRIu32 " sent=%" PRIu32
-                    " wifi_drop=%" PRIu32
-                    " send_fail=%" PRIu32
-                    " format_fail=%" PRIu32,
-                    stats_snapshot.udp_total,
-                    stats_snapshot.udp_sent,
-                    stats_snapshot.udp_wifi_drop,
-                    stats_snapshot.udp_send_fail,
-                    stats_snapshot.udp_format_fail
-                );
-            }
         }
     }
 }

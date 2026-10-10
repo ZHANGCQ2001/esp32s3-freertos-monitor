@@ -13,6 +13,7 @@
 #include "control_task.h"
 #include "system_events.h"
 #include "system_stats.h"
+#include "monitor_task.h"
 
 static const char *TAG = "app_main";
 
@@ -81,4 +82,5 @@ void app_main(void)
     ESP_ERROR_CHECK(process_task_start(&process_context));
     ESP_ERROR_CHECK(sensor_task_start(&sensor_context));
     ESP_ERROR_CHECK(control_task_start(system_event_group));
+    ESP_ERROR_CHECK(monitor_task_start(&stats_context));
 }
