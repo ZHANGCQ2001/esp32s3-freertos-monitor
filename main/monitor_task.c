@@ -91,10 +91,18 @@ esp_err_t monitor_task_start(system_stats_context_t *context_p)
     );
 
     if (monitor_timer == NULL) {
+        vTaskDelete(monitor_task_handle);
+        monitor_task_handle = NULL;
         return ESP_ERR_NO_MEM;
     }
 
     if (xTimerStart(monitor_timer, 0) != pdPASS) {
+        xTimerDelete(monitor_timer, 0);
+        monitor_timer = NULL;
+
+        vTaskDelete(monitor_task_handle);
+        monitor_task_handle = NULL;
+
         return ESP_FAIL;
     }
 
