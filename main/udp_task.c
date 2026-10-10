@@ -34,11 +34,6 @@ static void udp_task(void *arg)
     udp_task_context_t *context_p = (udp_task_context_t *)arg;
     QueueHandle_t queue = context_p->queue;
     system_stats_context_t *stats_context_p = context_p->stats_context_p;
-    uint32_t sent_count = 0;
-    uint32_t send_fail_count = 0;
-    uint32_t wifi_drop_count = 0;
-    uint32_t format_fail_count = 0;
-    uint32_t total_count = 0;
 
     // 创建socket
     int sock = -1;
