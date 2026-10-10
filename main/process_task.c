@@ -37,21 +37,14 @@ static void process_task(void *arg)
             processed_sample.norm_g = norm;
             processed_sample.sample = sample;
             if (xQueueSend(output_queue, &processed_sample, 0) != pdTRUE) {
-                ESP_LOGW(TAG, "Output queue full, processed sample dropped");
+                xSemaphoreTake(stats_context_p->mutex, portMAX_DELAY);
+                stats_context_p->stats.process_dropped++;
+                xSemaphoreGive(stats_context_p->mutex);
             }
 
             xSemaphoreTake(stats_context_p->mutex, portMAX_DELAY);
             stats_context_p->stats.processed_samples = processed_count;
             xSemaphoreGive(stats_context_p->mutex);
-
-            if (processed_count  % 20 == 0) {
-                ESP_LOGI(
-                    TAG,
-                    "core=%d, stack free min=%u bytes",
-                    esp_cpu_get_core_id(),
-                    (unsigned)uxTaskGetStackHighWaterMark(NULL)
-                );
-            }
         }
     }
 }

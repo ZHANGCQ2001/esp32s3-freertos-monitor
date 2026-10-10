@@ -52,6 +52,10 @@ static void sensor_task(void *arg)
             sample.sequence = sequence;
             if (xQueueSend(queue, &sample, 0) != pdTRUE) {
                 ESP_LOGW(TAG, "Sensor queue full, sample dropped");
+            } else {
+                xSemaphoreTake(stats_context_p->mutex, portMAX_DELAY);
+                stats_context_p->stats.sensor_samples++;
+                xSemaphoreGive(stats_context_p->mutex);
             }
         } else {
             ESP_LOGE(
@@ -62,10 +66,6 @@ static void sensor_task(void *arg)
         }
 
         sequence++;
-        xSemaphoreTake(stats_context_p->mutex, portMAX_DELAY);
-        stats_context_p->stats.sensor_samples = sequence;
-        xSemaphoreGive(stats_context_p->mutex);
-
 
         vTaskDelayUntil(
             &last_wake_time,

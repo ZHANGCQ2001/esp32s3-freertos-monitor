@@ -29,11 +29,17 @@ static void monitor_task(void *arg)
 
         ESP_LOGI(
             TAG,
+            "sensor=%" PRIu32
+            " processed=%" PRIu32
+            " process_drop=%" PRIu32
             "UDP total=%" PRIu32
             " sent=%" PRIu32
             " wifi_drop=%" PRIu32
             " send_fail=%" PRIu32
             " format_fail=%" PRIu32,
+            snapshot.sensor_samples,
+            snapshot.processed_samples,
+            snapshot.process_dropped,
             snapshot.udp_total,
             snapshot.udp_sent,
             snapshot.udp_wifi_drop,
