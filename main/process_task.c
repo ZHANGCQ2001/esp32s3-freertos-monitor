@@ -19,7 +19,6 @@ static void process_task(void *arg)
     QueueHandle_t input_queue = context_p->input_queue;
     QueueHandle_t output_queue = context_p->output_queue;
     system_stats_context_t *stats_context_p = context_p->stats_context_p;
-    uint32_t processed_count  = 0;
     while(1) {
         sensor_sample_t sample;
         processed_sample_t processed_sample;
@@ -28,7 +27,6 @@ static void process_task(void *arg)
             &sample, 
             portMAX_DELAY
         ) == pdTRUE) {
-            processed_count ++;
             float norm = sqrtf(
                 sample.accel.x_g * sample.accel.x_g +
                 sample.accel.y_g * sample.accel.y_g +
@@ -36,14 +34,16 @@ static void process_task(void *arg)
             );
             processed_sample.norm_g = norm;
             processed_sample.sample = sample;
+            bool dropped = false;
             if (xQueueSend(output_queue, &processed_sample, 0) != pdTRUE) {
-                xSemaphoreTake(stats_context_p->mutex, portMAX_DELAY);
-                stats_context_p->stats.process_dropped++;
-                xSemaphoreGive(stats_context_p->mutex);
+                dropped = true;
             }
 
             xSemaphoreTake(stats_context_p->mutex, portMAX_DELAY);
-            stats_context_p->stats.processed_samples = processed_count;
+            stats_context_p->stats.processed_samples++;
+            if (dropped) {
+                stats_context_p->stats.process_dropped++;
+            }
             xSemaphoreGive(stats_context_p->mutex);
         }
     }
