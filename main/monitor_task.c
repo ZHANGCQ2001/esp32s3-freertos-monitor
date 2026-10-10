@@ -68,13 +68,6 @@ static void monitor_timer_callback(TimerHandle_t timer)
 
 esp_err_t monitor_task_start(system_stats_context_t *context_p)
 {
-    monitor_timer = xTimerCreate(
-        "monitor_timer",
-        pdMS_TO_TICKS(2000),
-        pdTRUE,
-        NULL,
-        monitor_timer_callback
-    );
     // 创建任务
     BaseType_t ret = xTaskCreate(
         monitor_task,
@@ -82,17 +75,28 @@ esp_err_t monitor_task_start(system_stats_context_t *context_p)
         4096,
         context_p,
         2,
-        NULL
+        &monitor_task_handle
     );
 
     if(ret != pdPASS) {
         return ESP_ERR_NO_MEM;
     }
 
-    xTimerStart(
-        monitor_timer,
-        0
+    monitor_timer = xTimerCreate(
+        "monitor_timer",
+        pdMS_TO_TICKS(2000),
+        pdTRUE,
+        NULL,
+        monitor_timer_callback
     );
+
+    if (monitor_timer == NULL) {
+        return ESP_ERR_NO_MEM;
+    }
+
+    if (xTimerStart(monitor_timer, 0) != pdPASS) {
+        return ESP_FAIL;
+    }
 
     return ESP_OK;
 }
