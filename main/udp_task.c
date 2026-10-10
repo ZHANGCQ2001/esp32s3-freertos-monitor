@@ -104,24 +104,30 @@ static void udp_task(void *arg)
                 &dest_addr,
                 &processed_sample
             );
+
+            xSemaphoreTake(stats_context_p->mutex, portMAX_DELAY);
+
+            stats_context_p->stats.udp_total++;
             switch(transmit_status) {
                 case UDP_SAMPLE_SENT:
-                    sent_count++;
+                    stats_context_p->stats.udp_sent++;
                     break;
                 case UDP_SAMPLE_WIFI_DROP:
-                    wifi_drop_count++;
+                    stats_context_p->stats.udp_wifi_drop++;
                     break;
                 case UDP_SAMPLE_FORMAT_FAIL:
-                    format_fail_count++;
+                    stats_context_p->stats.udp_format_fail++;
                     break;
                 case UDP_SAMPLE_SEND_FAIL:
-                    send_fail_count++;
+                    stats_context_p->stats.udp_send_fail++;
                     break;
                 default:
                     break;
             }
-            total_count++;
-            if(total_count % 100 == 0) {
+
+            xSemaphoreGive(stats_context_p->mutex);
+            
+            if(stats_context_p->stats.udp_total % 100 == 0) {
                 ESP_LOGI(
                     "UDP stats",
                     "total=%" PRIu32
@@ -129,11 +135,11 @@ static void udp_task(void *arg)
                     " wifi_drop=%" PRIu32
                     " send_fail=%" PRIu32
                     " format_fail=%" PRIu32,
-                    total_count,
-                    sent_count,
-                    wifi_drop_count,
-                    send_fail_count,
-                    format_fail_count
+                    stats_context_p->stats.udp_total,
+                    stats_context_p->stats.udp_sent,
+                    stats_context_p->stats.udp_wifi_drop,
+                    stats_context_p->stats.udp_send_fail,
+                    stats_context_p->stats.udp_format_fail
                 );
             }
         }
