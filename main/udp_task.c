@@ -31,7 +31,9 @@ static udp_sample_result_t udp_send_sample(
 
 static void udp_task(void *arg)
 {
-    QueueHandle_t queue = (QueueHandle_t)arg;
+    udp_task_context_t *context_p = (udp_task_context_t *)arg;
+    QueueHandle_t queue = context_p->queue;
+    system_stats_context_t *stats_context_p = context_p->stats_context_p;
     uint32_t sent_count = 0;
     uint32_t send_fail_count = 0;
     uint32_t wifi_drop_count = 0;
@@ -199,14 +201,14 @@ static udp_sample_result_t udp_send_sample(
     return UDP_SAMPLE_SENT;
 }
 
-esp_err_t udp_task_start(QueueHandle_t queue)
+esp_err_t udp_task_start(udp_task_context_t *context_p)
 {
     // 创建任务
     BaseType_t ret = xTaskCreate(
         udp_task,
         "udp_task",
         4096,
-        queue,
+        context_p,
         3,
         NULL
     );

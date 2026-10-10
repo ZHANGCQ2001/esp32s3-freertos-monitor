@@ -186,9 +186,8 @@ static void control_task(void *arg)
     }
 }
 
-esp_err_t control_task_start(void *arg) 
+esp_err_t control_task_start(EventGroupHandle_t event_group) 
 {
-    EventGroupHandle_t event_group = (EventGroupHandle_t)arg;
     ESP_RETURN_ON_ERROR(
         board_gpio_init(),
         TAG,

@@ -12,6 +12,7 @@
 #include "wifi_sta.h"
 #include "control_task.h"
 #include "system_events.h"
+#include "system_stats.h"
 
 static const char *TAG = "app_main";
 
@@ -51,6 +52,13 @@ void app_main(void)
         SYS_RUN_BIT
     );
 
+    // 创建Mutex，控制多个task之间的共享状态
+    SemaphoreHandle_t stats_mutex = xSemaphoreCreateMutex();
+    if(stats_mutex == NULL) {
+        ESP_LOGE(TAG, "Failed to create stats mutex");
+        return;
+    }
+
     static process_task_context_t process_context;
     process_context.input_queue = sensor_queue;
     process_context.output_queue = processed_queue;
@@ -59,11 +67,17 @@ void app_main(void)
     sensor_context.queue = sensor_queue;
     sensor_context.event_group = system_event_group;
 
+    static system_stats_context_t stats_context;
+    stats_context.mutex = stats_mutex;
+
+    static udp_task_context_t udp_context;
+    udp_context.queue = processed_queue;
+    udp_context.stats_context_p = &stats_context;
+
     // 先创建compinents，之后的任务需要
     ESP_ERROR_CHECK(wifi_sta_start());
-
     // 从流水线末端开始创建任务，使消费者先阻塞等待数据
-    ESP_ERROR_CHECK(udp_task_start(processed_queue));
+    ESP_ERROR_CHECK(udp_task_start(&udp_context));
     ESP_ERROR_CHECK(process_task_start(&process_context));
     ESP_ERROR_CHECK(sensor_task_start(&sensor_context));
     ESP_ERROR_CHECK(control_task_start(system_event_group));
