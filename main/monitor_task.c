@@ -3,6 +3,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/timers.h"
+#include "esp_task_wdt.h"
 
 #include <inttypes.h>
 
@@ -17,7 +18,8 @@ static void monitor_timer_callback(TimerHandle_t timer);
 static void monitor_task(void *arg)
 {
     system_stats_context_t *stats_context_p = (system_stats_context_t *)arg;
-    
+    // 注册当前task的看门狗
+    ESP_ERROR_CHECK(esp_task_wdt_add(NULL));
 
     while (1) {
         ulTaskNotifyTake(
@@ -55,6 +57,10 @@ static void monitor_task(void *arg)
             snapshot.udp_send_fail,
             snapshot.udp_format_fail
         );
+
+        if(snapshot.sensor_samples % 5 == 0) {
+            ESP_ERROR_CHECK(esp_task_wdt_reset());
+        }
     }
 }
 
