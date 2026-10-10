@@ -1,4 +1,11 @@
 #include "monitor_task.h"
+#include "esp_log.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+
+#include <inttypes.h>
+
+static const char *TAG = "monitor_task";
 
 
 static void monitor_task(void *arg)
@@ -8,8 +15,6 @@ static void monitor_task(void *arg)
 
     while (1) {
         vTaskDelay(pdMS_TO_TICKS(2000));
-
-        system_stats_t snapshot;
 
         xSemaphoreTake(
             stats_context_p->mutex,
