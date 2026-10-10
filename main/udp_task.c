@@ -100,8 +100,6 @@ static void udp_task(void *arg)
                 &processed_sample
             );
 
-            system_stats_t stats_snapshot;
-
             xSemaphoreTake(stats_context_p->mutex, portMAX_DELAY);
 
             stats_context_p->stats.udp_total++;

@@ -16,6 +16,8 @@ static void monitor_task(void *arg)
     while (1) {
         vTaskDelay(pdMS_TO_TICKS(2000));
 
+        system_stats_t snapshot;
+
         xSemaphoreTake(
             stats_context_p->mutex,
             portMAX_DELAY
